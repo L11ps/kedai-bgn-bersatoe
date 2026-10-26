@@ -1,0 +1,486 @@
+'use client';
+
+import React, { useState, useEffect, use } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import confetti from 'canvas-confetti';
+import {
+  Clock,
+  CheckCircle2,
+  Download,
+  ExternalLink,
+  Store,
+  RefreshCw,
+  Home,
+  AlertCircle,
+  Copy,
+  Check,
+  Zap,
+} from 'lucide-react';
+import { Order, Payment } from '@/types';
+import { formatIDR } from '@/lib/formatters';
+
+const STAGES = [
+  {
+    key: 'PAID',
+    label: 'Pesanan Diterima',
+    desc: 'Pembayaran QRIS lunas & pesanan tercatat',
+    icon: CheckCircle2,
+  },
+  {
+    key: 'COMPLETED',
+    label: 'Pesanan Selesai',
+    desc: 'Pesanan telah diserahkan di titik temu kampus. Selamat menikmati!',
+    icon: Store,
+  },
+];
+
+export default function OrderTrackingPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const resolvedParams = use(params);
+  const orderId = resolvedParams.id;
+
+  const [order, setOrder] = useState<Order | null>(null);
+  const [payment, setPayment] = useState<Payment | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [timeLeft, setTimeLeft] = useState<number>(15 * 60);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+
+  // Fetch Order
+  const fetchOrder = async () => {
+    try {
+      const res = await fetch(`/api/orders/${orderId}`);
+      const data = await res.json();
+      if (data.success && data.order) {
+        setOrder(data.order);
+        if (data.order.payment) {
+          setPayment(data.order.payment);
+        } else if (data.order.payments?.[0]) {
+          setPayment(data.order.payments[0]);
+        }
+      }
+    } catch (err) {
+      console.error('Fetch order error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrder();
+    // Realtime polling fallback every 3 seconds
+    const interval = setInterval(fetchOrder, 3000);
+    return () => clearInterval(interval);
+  }, [orderId]);
+
+  // Trigger Confetti when status transitions to PAID or COMPLETED
+  useEffect(() => {
+    if (order && (order.order_status === 'PAID' || order.order_status === 'COMPLETED')) {
+      confetti({
+        particleCount: 80,
+        spread: 60,
+        origin: { y: 0.6 },
+        colors: ['#0F2547', '#D4A843', '#9EC6E3', '#10B981'],
+      });
+    }
+  }, [order?.order_status]);
+
+  // Countdown timer for 15-minute expiry
+  useEffect(() => {
+    if (!payment?.expiry_time || order?.order_status !== 'WAITING_PAYMENT') return;
+
+    const expiryMs = new Date(payment.expiry_time).getTime();
+    const timer = setInterval(() => {
+      const remainingSec = Math.max(0, Math.floor((expiryMs - Date.now()) / 1000));
+      setTimeLeft(remainingSec);
+      if (remainingSec <= 0) {
+        clearInterval(timer);
+        fetchOrder();
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [payment?.expiry_time, order?.order_status]);
+
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
+  const handleSimulatePayment = async () => {
+    if (!order || isSimulating) return;
+    setIsSimulating(true);
+    try {
+      await fetch('/api/webhooks/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.id,
+          status: 'settlement',
+          paymentMethod: payment?.payment_method || 'QRIS',
+        }),
+      });
+      await fetchOrder();
+    } catch (err) {
+      console.error('Simulation error:', err);
+    } finally {
+      setIsSimulating(false);
+    }
+  };
+
+  const handleCopyOrderCode = () => {
+    if (order) {
+      navigator.clipboard.writeText(order.order_code);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    }
+  };
+
+  if (isLoading && !order) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3">
+          <RefreshCw className="w-8 h-8 text-[#D4A843] animate-spin" />
+          <p className="text-xs font-semibold text-slate-500">Memuat status pesanan...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+        <div className="max-w-[480px] w-full bg-white rounded-3xl p-6 text-center space-y-4 shadow-xl">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+          <h2 className="font-extrabold text-base text-slate-900">Pesanan Tidak Ditemukan</h2>
+          <Link
+            href="/"
+            className="inline-flex min-h-[44px] items-center justify-center px-6 rounded-2xl bg-[#0F2547] hover:bg-[#163566] text-[#FAF8F5] border border-[#D4A843]/50 font-bold text-xs transition-colors"
+          >
+            Kembali ke Beranda
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const isWaitingPayment = order.order_status === 'WAITING_PAYMENT';
+  const isExpired = order.order_status === 'EXPIRED';
+
+  // Current stage index: 0 = Pesanan Diterima (Diproses), 1 = Pesanan Selesai
+  const isCompleted = order.order_status === 'COMPLETED';
+  const currentStageIndex = isCompleted ? 1 : 0;
+
+  return (
+    <div className="min-h-screen bg-[#071324] sm:py-6 flex flex-col items-center justify-start antialiased text-slate-900 selection:bg-[#D4A843] selection:text-[#0F2547]">
+      <div className="w-full max-w-[480px] min-h-screen sm:min-h-[92vh] sm:rounded-3xl overflow-hidden bg-white flex flex-col shadow-2xl relative border-x border-slate-200/80 pb-20">
+        {/* Sticky Header */}
+        <header className="sticky top-0 z-40 bg-[#0F2547]/95 backdrop-blur-md border-b border-[#9EC6E3]/25 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Link
+              href="/"
+              className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+            >
+              <Home className="w-5 h-5" />
+            </Link>
+            <div>
+              <h1 className="font-extrabold text-sm text-[#FAF8F5]">Status Pesanan</h1>
+              <p className="text-[11px] text-[#D4A843] font-bold">{order.order_code}</p>
+            </div>
+          </div>
+
+          <button
+            onClick={fetchOrder}
+            className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+            title="Muat Ulang Status"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </header>
+
+        <div className="p-4 space-y-6 flex-1">
+          {/* CASE A: WAITING_PAYMENT (QRIS / E-Wallet Dynamic) */}
+          {isWaitingPayment ? (
+            <div className="space-y-5">
+              {/* Expiry Countdown Box */}
+              <div className="bg-amber-500 text-white rounded-3xl p-4 shadow-lg shadow-amber-500/20 text-center space-y-1">
+                <span className="text-[11px] uppercase tracking-wider font-bold opacity-90 block">
+                  Batas Waktu Pembayaran
+                </span>
+                <div className="text-3xl font-black tracking-tight flex items-center justify-center gap-2">
+                  <Clock className="w-7 h-7 text-amber-100" />
+                  <span>{formatTimer(timeLeft)}</span>
+                </div>
+                <p className="text-[11px] text-amber-100">
+                  Selesaikan pembayaran sebelum kode kedaluwarsa otomatis.
+                </p>
+              </div>
+
+              {/* QRIS Display Card */}
+              <div className="bg-white rounded-3xl p-5 border-2 border-[#0F2547]/20 shadow-md text-center space-y-4">
+                <div className="inline-block px-3 py-1 rounded-full bg-[#0F2547] text-[#D4A843] border border-[#D4A843]/40 font-bold text-xs">
+                  {payment?.payment_method || 'QRIS Dinamis'}
+                </div>
+
+                <div>
+                  <span className="text-xs text-slate-400 block font-medium">Total Tagihan</span>
+                  <span className="text-2xl font-black text-slate-900">
+                    {formatIDR(order.gross_amount)}
+                  </span>
+                </div>
+
+                {/* QR Code Container */}
+                <div className="relative w-64 h-64 mx-auto p-3 bg-white rounded-2xl border border-slate-200 shadow-inner flex items-center justify-center">
+                  {payment?.qr_string ? (
+                    <div className="space-y-1">
+                      {/* Generates QR Image dynamically via simple SVG/canvas */}
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(
+                          payment.qr_string
+                        )}`}
+                        alt="QRIS Barcode"
+                        className="w-56 h-56 mx-auto object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-slate-400 text-xs">QRIS tidak tersedia</div>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-slate-500 max-w-[280px] mx-auto leading-relaxed">
+                  Buka BCA Mobile, GoPay, OVO, ShopeePay, DANA, atau aplikasi m-Banking apa pun, lalu scan kode QR di atas.
+                </p>
+
+                {/* Deep-link button for E-Wallets */}
+                {payment?.deeplink_url && (
+                  <a
+                    href={payment.deeplink_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20"
+                  >
+                    <span>Buka Aplikasi E-Wallet</span>
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                )}
+
+                {/* SIMULATE PAYMENT BUTTON (FOR FAST DEMO & TESTING) */}
+                <div className="pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    disabled={isSimulating}
+                    onClick={handleSimulatePayment}
+                    className="w-full min-h-[44px] rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/25 active:scale-95 transition-all"
+                  >
+                    <Zap className="w-4 h-4 text-amber-300" />
+                    <span>
+                      {isSimulating
+                        ? 'Memverifikasi Pembayaran...'
+                        : 'Simulasi Bayar Lunas (Instant Settlement)'}
+                    </span>
+                  </button>
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Mode Pengujian: Klik untuk menguji webhook otomatis & terbit nomor antrean.
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : isExpired ? (
+            /* CASE B: EXPIRED */
+            <div className="bg-red-50 rounded-3xl p-6 border border-red-200 text-center space-y-3">
+              <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+              <h2 className="font-extrabold text-base text-red-900">Pesanan Kedaluwarsa</h2>
+              <p className="text-xs text-red-700 max-w-[280px] mx-auto leading-relaxed">
+                Batas waktu pembayaran 15 menit telah habis. Kuota stok menu telah dikembalikan secara otomatis.
+              </p>
+              <Link
+                href="/"
+                className="inline-flex min-h-[44px] items-center justify-center px-6 rounded-2xl bg-[#0F2547] hover:bg-[#163566] text-[#FAF8F5] border border-[#D4A843]/50 font-bold text-xs transition-colors"
+              >
+                Pesan Ulang
+              </Link>
+            </div>
+          ) : (
+            /* CASE C: PAID / COOKING / READY / COMPLETED */
+            <div className="space-y-6">
+              {/* Highlight Queue Number Card */}
+              <div className="bg-gradient-to-br from-[#0F2547] via-[#163566] to-[#0A1628] text-white rounded-3xl p-5 shadow-xl border border-[#D4A843]/40 text-center space-y-2 relative overflow-hidden">
+                <div className="absolute -right-8 -bottom-8 w-28 h-28 rounded-full bg-[#D4A843]/10 blur-xl pointer-events-none" />
+                <span className="inline-block px-3 py-1 rounded-full bg-white/10 text-[11px] font-bold tracking-wider uppercase backdrop-blur-sm border border-white/10">
+                  Nomor Antrean Pesanan
+                </span>
+
+                <div className="text-5xl font-black tracking-tight text-[#D4A843] drop-shadow-sm py-1">
+                  {order.queue_number || 'A-001'}
+                </div>
+
+                <div className="flex items-center justify-center gap-2 text-xs text-[#9EC6E3]">
+                  <span>Kode: {order.order_code}</span>
+                  <button
+                    onClick={handleCopyOrderCode}
+                    className="p-1 rounded-md hover:bg-white/20 transition-colors"
+                    title="Salin Kode Pesanan"
+                  >
+                    {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* 2-Stage Real-Time Stepper */}
+              <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200/80 space-y-4">
+                <h2 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider">
+                  Progres Pemrosesan Pesanan
+                </h2>
+
+                <div className="space-y-4 relative">
+                  {/* Vertical Progress Line */}
+                  <div className="absolute left-[19px] top-3 bottom-3 w-0.5 bg-slate-200" />
+
+                  {STAGES.map((stg, idx) => {
+                    const isDone = isCompleted ? true : idx === 0;
+                    const isCurrent = isCompleted ? idx === 1 : idx === 0;
+                    const Icon = stg.icon;
+
+                    return (
+                      <div key={stg.key} className="flex items-start gap-3.5 relative z-10">
+                        <div
+                          className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 transition-all ${
+                            isCompleted && idx === 1
+                              ? 'bg-emerald-500 text-white shadow-md'
+                              : isCurrent
+                              ? 'bg-[#0F2547] text-[#FAF8F5] ring-4 ring-[#D4A843]/30 shadow-md scale-105 border border-[#D4A843]'
+                              : isDone
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-white border-2 border-slate-200 text-slate-400'
+                          }`}
+                        >
+                          <Icon className="w-5 h-5 text-[#D4A843]" />
+                        </div>
+                        <div className="pt-0.5">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`text-xs font-bold ${
+                                isCurrent
+                                  ? isCompleted
+                                    ? 'text-emerald-700'
+                                    : 'text-[#0F2547]'
+                                  : isDone
+                                  ? 'text-slate-900'
+                                  : 'text-slate-400'
+                              }`}
+                            >
+                              {stg.label}
+                            </span>
+                            {isCurrent && (
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold ${
+                                  isCompleted
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : 'bg-[#0F2547]/10 text-[#0F2547] border border-[#D4A843]/40 animate-pulse'
+                                }`}
+                              >
+                                {isCompleted ? 'Selesai' : 'Berlangsung'}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">{stg.desc}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Logistics & Delivery Details */}
+          <div className="bg-slate-50/70 p-4 rounded-3xl border border-slate-200/70 space-y-2.5 text-xs">
+            <h3 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">
+              Informasi Pemenuhan
+            </h3>
+
+            <div className="space-y-1.5 text-slate-600">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Penerima:</span>
+                <span className="font-bold text-slate-800">{order.customer_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">WhatsApp:</span>
+                <span className="font-bold text-slate-800">{order.customer_whatsapp}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Metode:</span>
+                <span className="font-bold text-slate-800">
+                  {order.fulfillment_type === 'DELIVERY' ? 'Antar ke Kampus' : 'Ambil Sendiri'}
+                </span>
+              </div>
+              {order.fulfillment_type === 'DELIVERY' && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Gedung Kampus:</span>
+                    <span className="font-bold text-slate-800">{order.campus_location}</span>
+                  </div>
+                  {order.location_notes && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Patokan Lokasi:</span>
+                      <span className="font-bold text-slate-800 text-right max-w-[200px]">
+                        {order.location_notes}
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+              <div className="flex justify-between">
+                <span className="text-slate-400">Waktu:</span>
+                <span className="font-bold text-slate-800">{order.scheduled_time}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Ordered Items Breakdown */}
+          <div className="bg-slate-50/70 p-4 rounded-3xl border border-slate-200/70 space-y-2.5 text-xs">
+            <h3 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">
+              Rincian Menu
+            </h3>
+            <div className="divide-y divide-slate-200/60">
+              {order.items?.map((it) => (
+                <div key={it.id} className="py-2 first:pt-0 last:pb-0 flex justify-between gap-2">
+                  <div>
+                    <span className="font-bold text-slate-800">
+                      {it.quantity}x {it.product_name}
+                    </span>
+                    {it.selected_options && (
+                      <span className="block text-[10px] text-slate-500">
+                        {Object.values(it.selected_options).join(', ')}
+                      </span>
+                    )}
+                    {it.special_notes && (
+                      <span className="block text-[10px] text-amber-700 italic">
+                        Catatan: &ldquo;{it.special_notes}&rdquo;
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-bold text-slate-900 shrink-0">
+                    {formatIDR(it.subtotal || it.unit_price * it.quantity)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 border-t border-slate-200 flex justify-between text-sm">
+              <span className="font-bold text-slate-900">Total Tagihan</span>
+              <span className="font-black text-[#0F2547]">
+                {formatIDR(order.gross_amount)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
