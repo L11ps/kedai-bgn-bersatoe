@@ -15,11 +15,11 @@ export default function Header() {
         <Link href="/" className="flex items-center gap-2.5 group">
           <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 ring-2 ring-[#D4A843] shadow-md bg-[#0A1628] flex items-center justify-center transition-transform group-hover:scale-105">
             <Image
-              src="/images/bgn-logo.jpg"
+              src="/images/bgn-logo.png"
               alt="Logo Kedai BGN Bersatoe"
               width={40}
               height={40}
-              className="object-cover w-full h-full"
+              className="object-contain w-full h-full p-0.5"
               priority
             />
           </div>

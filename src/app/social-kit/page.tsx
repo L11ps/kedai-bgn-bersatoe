@@ -132,12 +132,10 @@ Kabar gembira buat seluruh mahasiswa & civitas akademika Tel-U Jakarta! KEDAI BG
 Gak ada lagi cerita kelaparan nunggu antrean panjang pas jam jeda kuliah! Semua menu disiapkan higienis, porsi mantap, dan rasa gurih nikmat:
 
 🔥 MENU ANDALAN KEDAI BGN:
-1. Pangsit Chili Oil: Rp12.000 (Sensasi pedas gurih & chili oil wangi)
-2. Nasi Katsu Sambal Matah: Rp15.000 (Ayam krispi + sambal matah segar harum serai)
-3. Nasi Katsu Mentai: Rp15.000 (Creamy torch mentai sauce & nori flakes)
-4. Mango Sticky Rice: Rp15.000 (Ketan gurih lumer + mangga manis matang)
-5. Stup Roti Mangga: Rp12.000 (Creamy vla mangga + limpahan keju cheddar)
-6. Jus Buah Murni: Rp12.000 (100% buah asli segar kaya vitamin)
+1. Nasi Katsu Mentai: Rp15.000 (Creamy torch mentai sauce & nori flakes)
+2. Pangsit Chili Oil: Rp12.000 (Sensasi pedas gurih & chili oil wangi)
+3. Jus Buah: Rp13.000 (100% buah asli segar kaya vitamin)
+4. Mango bread soup: Rp12.000 (Creamy vla mangga + limpahan keju cheddar)
 
 📲 CARA PESAN PRAKTIS VIA WEB:
 1. Kunjungi link di bio kami: @kedai.bgn_telyu
@@ -147,7 +145,7 @@ Gak ada lagi cerita kelaparan nunggu antrean panjang pas jam jeda kuliah! Semua 
 
 Ajak teman sekelas dan pesan sekarang juga! 🚀
 
-#KedaiBgnBersatoe #TelkomUniversityJakarta #AnakTelU #KulinerKampus #TelUHalimun #TelUMinangkabau #TelUDaanMogot #KatsuSambalMatah #PangsitChiliOil`;
+#KedaiBgnBersatoe #TelkomUniversityJakarta #AnakTelU #KulinerKampus #TelUHalimun #TelUMinangkabau #TelUDaanMogot #NasiKatsuMentai #PangsitChiliOil`;
 
   const dailyStoryCaptionText = `🔥 UPDATE STOK READY HARI INI DI KAMPUS TEL-U JAKARTA! 🔥
 
@@ -194,14 +192,12 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
         ctx.font = '24px sans-serif';
         ctx.fillText('Nikmat, Gurih, Porsi Kenyang Mahasiswa Tel-U Jakarta', 540, 185);
 
-        // Draw 6 menu items grid placeholders
+        // Draw 4 menu items grid placeholders
         const menuItems = [
-          { name: 'Pangsit Chili Oil', price: 'Rp12.000', note: 'Pedas Aromatik' },
-          { name: 'Nasi Katsu Sambal Matah', price: 'Rp15.000', note: 'Krispi Sambal Segar' },
           { name: 'Nasi Katsu Mentai', price: 'Rp15.000', note: 'Creamy Torch Mentai' },
-          { name: 'Mango Sticky Rice', price: 'Rp15.000', note: 'Ketan Gurih Manis' },
-          { name: 'Stup Roti Mangga', price: 'Rp12.000', note: 'Vla Mangga & Keju' },
-          { name: 'Jus Buah Murni', price: 'Rp12.000', note: '100% Buah Alami' },
+          { name: 'Pangsit Chili Oil', price: 'Rp12.000', note: 'Pedas Aromatik' },
+          { name: 'Jus Buah', price: 'Rp13.000', note: '100% Buah Alami' },
+          { name: 'Mango Bread Soup', price: 'Rp12.000', note: 'Vla Mangga & Keju' },
         ];
 
         menuItems.forEach((item, idx) => {
@@ -304,13 +300,13 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
 
         ctx.fillStyle = '#FAF8F5';
         ctx.font = 'bold 36px sans-serif';
-        ctx.fillText('3 Menu Andalan Mahasiswa Tel-U:', 540, 420);
+        ctx.fillText('Menu Andalan Mahasiswa Tel-U:', 540, 420);
 
         ctx.font = '28px sans-serif';
         ctx.fillStyle = '#9EC6E3';
-        ctx.fillText('• Nasi Katsu Sambal Matah (Ayam Krispi Sambal Segar)', 540, 500);
+        ctx.fillText('• Nasi Katsu Mentai (Creamy Torch Saus Mentai)', 540, 500);
         ctx.fillText('• Pangsit Chili Oil (Pedas Gurih Bikin Nagih)', 540, 570);
-        ctx.fillText('• Mango Sticky Rice (Ketan Legit Saus Santan Kental)', 540, 640);
+        ctx.fillText('• Mango Bread Soup (Vla Mangga Lembut & Keju)', 540, 640);
 
         // Price badge
         ctx.fillStyle = '#D4A843';
@@ -672,8 +668,8 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                           <div className="col-span-2 relative rounded-2xl overflow-hidden border border-[#9EC6E3]/30 bg-[#0F2547]/80 shadow-md flex items-center p-2.5 gap-3">
                             <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 border border-white/20">
                               <Image
-                                src="/images/nasi_katsu_sambal_matah.jpg"
-                                alt="Nasi Katsu Sambal Matah"
+                                src="/images/nasi_katsu_mentai.jpg"
+                                alt="Nasi Katsu Mentai"
                                 fill
                                 className="object-cover"
                               />
@@ -683,10 +679,10 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                                 Signature Dish
                               </div>
                               <div className="text-xs font-black text-[#FAF8F5] truncate">
-                                Nasi Katsu Sambal Matah
+                                Nasi Katsu Mentai
                               </div>
                               <div className="text-[11px] text-slate-300 line-clamp-1">
-                                Ayam krispi + sambal matah harum segar
+                                Ayam krispi + saus mentai gurih torch
                               </div>
                               <div className="inline-block mt-1 px-2 py-0.5 rounded-md bg-[#D4A843] text-[#0F2547] text-[11px] font-black">
                                 Rp15.000
@@ -718,18 +714,18 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                           <div className="relative rounded-2xl overflow-hidden border border-[#9EC6E3]/30 bg-[#0F2547]/80 shadow-md p-2 flex flex-col justify-between">
                             <div className="relative w-full h-20 rounded-xl overflow-hidden border border-white/20 mb-1.5">
                               <Image
-                                src="/images/mango_sticky_rice.jpg"
-                                alt="Mango Sticky Rice"
+                                src="/images/stup_roti_mangga.jpg"
+                                alt="Mango Bread Soup"
                                 fill
                                 className="object-cover"
                               />
                             </div>
                             <div>
                               <div className="text-[11px] font-extrabold text-[#FAF8F5] truncate">
-                                Mango Sticky Rice
+                                Mango Bread Soup
                               </div>
                               <div className="text-[10px] text-[#9EC6E3] font-bold">
-                                Rp15.000
+                                Rp12.000
                               </div>
                             </div>
                           </div>
@@ -1200,10 +1196,10 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                               <Image
                                 src={
                                   showcaseIndex === 0
-                                    ? '/images/nasi_katsu_sambal_matah.jpg'
+                                    ? '/images/nasi_katsu_mentai.jpg'
                                     : showcaseIndex === 1
                                     ? '/images/pangsit_chili_oil.jpg'
-                                    : '/images/mango_sticky_rice.jpg'
+                                    : '/images/stup_roti_mangga.jpg'
                                 }
                                 alt="Highlight Menu"
                                 fill
@@ -1212,9 +1208,9 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                             </div>
                             <div className="mt-2 text-center">
                               <div className="text-sm font-black text-[#FAF8F5]">
-                                {showcaseIndex === 0 && 'Nasi Katsu Sambal Matah'}
+                                {showcaseIndex === 0 && 'Nasi Katsu Mentai'}
                                 {showcaseIndex === 1 && 'Pangsit Chili Oil'}
-                                {showcaseIndex === 2 && 'Mango Sticky Rice'}
+                                {showcaseIndex === 2 && 'Mango Bread Soup'}
                               </div>
                               <div className="inline-flex items-center gap-1 mt-1 px-3 py-0.5 rounded-full bg-[#D4A843] text-[#0F2547] text-xs font-black shadow-md">
                                 <Sparkles className="w-3 h-3 text-[#0F2547]" />
@@ -1597,10 +1593,10 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                       <Image
                         src={
                           showcaseIndex === 0
-                            ? '/images/nasi_katsu_sambal_matah.jpg'
+                            ? '/images/nasi_katsu_mentai.jpg'
                             : showcaseIndex === 1
                             ? '/images/pangsit_chili_oil.jpg'
-                            : '/images/mango_sticky_rice.jpg'
+                            : '/images/stup_roti_mangga.jpg'
                         }
                         alt="Menu"
                         fill
@@ -1609,9 +1605,9 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                     </div>
                     <div className="mt-2 text-center">
                       <div className="text-sm font-black text-[#FAF8F5]">
-                        {showcaseIndex === 0 && 'Nasi Katsu Sambal Matah'}
+                        {showcaseIndex === 0 && 'Nasi Katsu Mentai'}
                         {showcaseIndex === 1 && 'Pangsit Chili Oil'}
-                        {showcaseIndex === 2 && 'Mango Sticky Rice'}
+                        {showcaseIndex === 2 && 'Mango Bread Soup'}
                       </div>
                       <div className="inline-block mt-1 px-3 py-0.5 rounded-full bg-[#D4A843] text-[#0F2547] text-xs font-black">
                         Rp12.000 - Rp15.000

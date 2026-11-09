@@ -243,66 +243,50 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 14. SEED INITIAL DATA: PRODUCTS & VARIANTS
+/* 14. SEED INITIAL DATA: PRODUCTS & VARIANTS */
 INSERT INTO products (name, slug, category, price, description, image_url, is_available) VALUES
-('Pangsit Chili Oil', 'pangsit-chili-oil', 'Makanan Utama & Camilan', 12000, 'Pangsit rebus lembut gurih dengan lumuran chili oil aromatik, garlic bits renyah, dan taburan wijen harum.', '/images/pangsit_chili_oil.jpg', true),
-('Nasi Katsu Sambal Matah', 'nasi-katsu-sambal-matah', 'Makanan Utama & Camilan', 15000, 'Ayam katsu krispi keemasan di atas nasi hangat pulen dengan sambal matah khas Bali yang segar dan pedas mantap.', '/images/nasi_katsu_sambal_matah.jpg', true),
 ('Nasi Katsu Mentai', 'nasi-katsu-mentai', 'Makanan Utama & Camilan', 15000, 'Ayam katsu renyah dengan siraman saus mentai creamy gurih yang di-torch wangi, nori flakes, dan tobiko.', '/images/nasi_katsu_mentai.jpg', true),
-('Mango Sticky Rice', 'mango-sticky-rice', 'Dessert & Minuman', 15000, 'Ketan gurih pulen disajikan dengan potongan mangga manis matang sempurna dan siraman saus santan kental khas Thailand.', '/images/mango_sticky_rice.jpg', true),
-('Stup Roti Mangga', 'stup-roti-mangga', 'Dessert & Minuman', 12000, 'Lapisan roti tawar lembut berpadu vla mangga creamy susu kental manis dengan limpahan keju cheddar parut melimpah.', '/images/stup_roti_mangga.jpg', true),
-('Jus Buah Murni', 'jus-buah-murni', 'Dessert & Minuman', 12000, 'Jus dari buah tropis segar pilihan tanpa pemanis buatan, disajikan dingin menyegarkan penambah energi.', '/images/jus_buah_murni.jpg', true)
+('Pangsit Chili Oil', 'pangsit-chili-oil', 'Makanan Utama & Camilan', 12000, 'Pangsit rebus lembut gurih dengan lumuran chili oil aromatik, garlic bits renyah, dan taburan wijen harum.', '/images/pangsit_chili_oil.jpg', true),
+('Jus Buah', 'jus-buah', 'Dessert & Minuman', 13000, 'Jus dari buah tropis segar pilihan tanpa pemanis buatan, disajikan dingin menyegarkan penambah energi.', '/images/jus_buah_murni.jpg', true),
+('Mango bread soup', 'mango-bread-soup', 'Dessert & Minuman', 12000, 'Lapisan roti tawar lembut berpadu vla mangga creamy susu kental manis dengan limpahan keju cheddar parut melimpah.', '/images/stup_roti_mangga.jpg', true)
 ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, image_url = EXCLUDED.image_url;
 
--- SEED VARIANTS
+/* SEED VARIANTS */
 DO $$
 DECLARE
-    v_pangsit UUID;
-    v_matah UUID;
     v_mentai UUID;
-    v_mango UUID;
-    v_stup UUID;
+    v_pangsit UUID;
     v_jus UUID;
+    v_mango UUID;
 BEGIN
-    SELECT id INTO v_pangsit FROM products WHERE slug = 'pangsit-chili-oil';
-    SELECT id INTO v_matah FROM products WHERE slug = 'nasi-katsu-sambal-matah';
     SELECT id INTO v_mentai FROM products WHERE slug = 'nasi-katsu-mentai';
-    SELECT id INTO v_mango FROM products WHERE slug = 'mango-sticky-rice';
-    SELECT id INTO v_stup FROM products WHERE slug = 'stup-roti-mangga';
-    SELECT id INTO v_jus FROM products WHERE slug = 'jus-buah-murni';
+    SELECT id INTO v_pangsit FROM products WHERE slug = 'pangsit-chili-oil';
+    SELECT id INTO v_jus FROM products WHERE slug = 'jus-buah';
+    SELECT id INTO v_mango FROM products WHERE slug = 'mango-bread-soup';
 
-    -- Pangsit Variants
-    DELETE FROM product_variants WHERE product_id = v_pangsit;
-    INSERT INTO product_variants (product_id, group_name, is_required, options) VALUES
-    (v_pangsit, 'Level Pedas', true, '["Level 1 Normal", "Level 2 Sedang", "Level 3 Ekstra Pedas"]'::jsonb),
-    (v_pangsit, 'Opsi Penyajian', true, '["Kuah", "Kering"]'::jsonb);
-
-    -- Katsu Sambal Matah Variants
-    DELETE FROM product_variants WHERE product_id = v_matah;
-    INSERT INTO product_variants (product_id, group_name, is_required, options) VALUES
-    (v_matah, 'Level Pedas', true, '["Normal", "Ekstra Pedas", "Sambal Pisah"]'::jsonb);
-
-    -- Katsu Mentai Variants
+    /* Katsu Mentai Variants */
     DELETE FROM product_variants WHERE product_id = v_mentai;
     INSERT INTO product_variants (product_id, group_name, is_required, options) VALUES
     (v_mentai, 'Torch Burn', false, '["Standar", "Ekstra Burn"]'::jsonb),
     (v_mentai, 'Tambah Chili Flakes', false, '["Ya", "Tidak"]'::jsonb);
 
-    -- Mango Sticky Rice Variants
-    DELETE FROM product_variants WHERE product_id = v_mango;
+    /* Pangsit Variants */
+    DELETE FROM product_variants WHERE product_id = v_pangsit;
     INSERT INTO product_variants (product_id, group_name, is_required, options) VALUES
-    (v_mango, 'Saus Santan', false, '["Normal", "Pisah"]'::jsonb);
+    (v_pangsit, 'Level Pedas', true, '["Level 1 Normal", "Level 2 Sedang", "Level 3 Ekstra Pedas"]'::jsonb),
+    (v_pangsit, 'Opsi Penyajian', true, '["Kuah", "Kering"]'::jsonb);
 
-    -- Stup Roti Mangga Variants
-    DELETE FROM product_variants WHERE product_id = v_stup;
-    INSERT INTO product_variants (product_id, group_name, is_required, options) VALUES
-    (v_stup, 'Penyajian', false, '["Dingin", "Suhu Ruang"]'::jsonb);
-
-    -- Jus Buah Murni Variants
+    /* Jus Buah Variants */
     DELETE FROM product_variants WHERE product_id = v_jus;
     INSERT INTO product_variants (product_id, group_name, is_required, options) VALUES
     (v_jus, 'Varian Buah', true, '["Mangga", "Jambu", "Alpukat", "Naga"]'::jsonb),
     (v_jus, 'Takaran Gula', true, '["Normal Sugar", "Less Sugar", "No Sugar"]'::jsonb),
     (v_jus, 'Takaran Es', true, '["Normal Ice", "Less Ice"]'::jsonb);
+
+    /* Mango bread soup Variants */
+    DELETE FROM product_variants WHERE product_id = v_mango;
+    INSERT INTO product_variants (product_id, group_name, is_required, options) VALUES
+    (v_mango, 'Penyajian', false, '["Dingin", "Suhu Ruang"]'::jsonb);
 END $$;
 
 -- SEED STAFF ACCOUNTS
