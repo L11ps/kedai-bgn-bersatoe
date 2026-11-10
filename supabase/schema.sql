@@ -246,7 +246,7 @@ $$ LANGUAGE plpgsql;
 /* 14. SEED INITIAL DATA: PRODUCTS & VARIANTS */
 INSERT INTO products (name, slug, category, price, description, image_url, is_available) VALUES
 ('Nasi Katsu Mentai', 'nasi-katsu-mentai', 'Makanan Utama & Camilan', 15000, 'Ayam katsu renyah dengan siraman saus mentai creamy gurih yang di-torch wangi, nori flakes, dan tobiko.', '/images/nasi_katsu_mentai.jpg', true),
-('Pangsit Chili Oil', 'pangsit-chili-oil', 'Makanan Utama & Camilan', 12000, 'Pangsit rebus lembut gurih dengan lumuran chili oil aromatik, garlic bits renyah, dan taburan wijen harum.', '/images/pangsit_chili_oil.jpg', true),
+('Nasi Ayam Katsu Sambal Matah', 'nasi-ayam-katsu-sambal-matah', 'Makanan Utama & Camilan', 15000, 'Ayam katsu krispi keemasan di atas nasi hangat pulen dengan sambal matah khas Bali yang segar, pedas mantap, dan harum serai.', '/images/nasi_ayam_katsu_sambal_matah.jpg', true),
 ('Jus Buah', 'jus-buah', 'Dessert & Minuman', 13000, 'Jus dari buah tropis segar pilihan tanpa pemanis buatan, disajikan dingin menyegarkan penambah energi.', '/images/jus_buah_murni.jpg', true),
 ('Mango bread soup', 'mango-bread-soup', 'Dessert & Minuman', 12000, 'Lapisan roti tawar lembut berpadu vla mangga creamy susu kental manis dengan limpahan keju cheddar parut melimpah.', '/images/stup_roti_mangga.jpg', true)
 ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, image_url = EXCLUDED.image_url;
@@ -255,12 +255,12 @@ ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, image_url = EXCLUDED.im
 DO $$
 DECLARE
     v_mentai UUID;
-    v_pangsit UUID;
+    v_matah UUID;
     v_jus UUID;
     v_mango UUID;
 BEGIN
     SELECT id INTO v_mentai FROM products WHERE slug = 'nasi-katsu-mentai';
-    SELECT id INTO v_pangsit FROM products WHERE slug = 'pangsit-chili-oil';
+    SELECT id INTO v_matah FROM products WHERE slug = 'nasi-ayam-katsu-sambal-matah';
     SELECT id INTO v_jus FROM products WHERE slug = 'jus-buah';
     SELECT id INTO v_mango FROM products WHERE slug = 'mango-bread-soup';
 
@@ -270,11 +270,10 @@ BEGIN
     (v_mentai, 'Torch Burn', false, '["Standar", "Ekstra Burn"]'::jsonb),
     (v_mentai, 'Tambah Chili Flakes', false, '["Ya", "Tidak"]'::jsonb);
 
-    /* Pangsit Variants */
-    DELETE FROM product_variants WHERE product_id = v_pangsit;
+    /* Katsu Sambal Matah Variants */
+    DELETE FROM product_variants WHERE product_id = v_matah;
     INSERT INTO product_variants (product_id, group_name, is_required, options) VALUES
-    (v_pangsit, 'Level Pedas', true, '["Level 1 Normal", "Level 2 Sedang", "Level 3 Ekstra Pedas"]'::jsonb),
-    (v_pangsit, 'Opsi Penyajian', true, '["Kuah", "Kering"]'::jsonb);
+    (v_matah, 'Level Pedas', true, '["Normal", "Ekstra Pedas", "Sambal Pisah"]'::jsonb);
 
     /* Jus Buah Variants */
     DELETE FROM product_variants WHERE product_id = v_jus;

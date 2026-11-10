@@ -116,7 +116,7 @@ Cita Rasa Gurih & Nikmat Khas Kampus Tel-U
 
 ⏰ Jam Operasional: 07.00 - 17.00 WIB
 ⚡ Ready Stok Harian & Pre-Order Besok
-🍗 Nasi Katsu, Pangsit Chili Oil & Dessert Segar
+🍗 Nasi Katsu Mentai, Nasi Katsu Sambal Matah & Dessert Segar
 💳 Pembayaran Instan QRIS Bebas Antre
 
 👇 Pesan Langsung Tanpa Antre:
@@ -133,7 +133,7 @@ Gak ada lagi cerita kelaparan nunggu antrean panjang pas jam jeda kuliah! Semua 
 
 🔥 MENU ANDALAN KEDAI BGN:
 1. Nasi Katsu Mentai: Rp15.000 (Creamy torch mentai sauce & nori flakes)
-2. Pangsit Chili Oil: Rp12.000 (Sensasi pedas gurih & chili oil wangi)
+2. Nasi Ayam Katsu Sambal Matah: Rp15.000 (Ayam krispi + sambal matah harum segar)
 3. Jus Buah: Rp13.000 (100% buah asli segar kaya vitamin)
 4. Mango bread soup: Rp12.000 (Creamy vla mangga + limpahan keju cheddar)
 
@@ -145,7 +145,7 @@ Gak ada lagi cerita kelaparan nunggu antrean panjang pas jam jeda kuliah! Semua 
 
 Ajak teman sekelas dan pesan sekarang juga! 🚀
 
-#KedaiBgnBersatoe #TelkomUniversityJakarta #AnakTelU #KulinerKampus #TelUHalimun #TelUMinangkabau #TelUDaanMogot #NasiKatsuMentai #PangsitChiliOil`;
+#KedaiBgnBersatoe #TelkomUniversityJakarta #AnakTelU #KulinerKampus #TelUHalimun #TelUMinangkabau #TelUDaanMogot #NasiKatsuMentai #KatsuSambalMatah`;
 
   const dailyStoryCaptionText = `🔥 UPDATE STOK READY HARI INI DI KAMPUS TEL-U JAKARTA! 🔥
 
@@ -195,7 +195,7 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
         // Draw 4 menu items grid placeholders
         const menuItems = [
           { name: 'Nasi Katsu Mentai', price: 'Rp15.000', note: 'Creamy Torch Mentai' },
-          { name: 'Pangsit Chili Oil', price: 'Rp12.000', note: 'Pedas Aromatik' },
+          { name: 'Nasi Katsu Sambal Matah', price: 'Rp15.000', note: 'Krispi Sambal Segar' },
           { name: 'Jus Buah', price: 'Rp13.000', note: '100% Buah Alami' },
           { name: 'Mango Bread Soup', price: 'Rp12.000', note: 'Vla Mangga & Keju' },
         ];
@@ -305,7 +305,7 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
         ctx.font = '28px sans-serif';
         ctx.fillStyle = '#9EC6E3';
         ctx.fillText('• Nasi Katsu Mentai (Creamy Torch Saus Mentai)', 540, 500);
-        ctx.fillText('• Pangsit Chili Oil (Pedas Gurih Bikin Nagih)', 540, 570);
+        ctx.fillText('• Nasi Katsu Sambal Matah (Ayam Krispi Sambal Segar)', 540, 570);
         ctx.fillText('• Mango Bread Soup (Vla Mangga Lembut & Keju)', 540, 640);
 
         // Price badge
@@ -694,18 +694,18 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                           <div className="relative rounded-2xl overflow-hidden border border-[#9EC6E3]/30 bg-[#0F2547]/80 shadow-md p-2 flex flex-col justify-between">
                             <div className="relative w-full h-20 rounded-xl overflow-hidden border border-white/20 mb-1.5">
                               <Image
-                                src="/images/pangsit_chili_oil.jpg"
-                                alt="Pangsit Chili Oil"
+                                src="/images/nasi_ayam_katsu_sambal_matah.jpg"
+                                alt="Nasi Katsu Sambal Matah"
                                 fill
                                 className="object-cover"
                               />
                             </div>
                             <div>
                               <div className="text-[11px] font-extrabold text-[#FAF8F5] truncate">
-                                Pangsit Chili Oil
+                                Nasi Katsu Sambal Matah
                               </div>
                               <div className="text-[10px] text-[#9EC6E3] font-bold">
-                                Rp12.000
+                                Rp15.000
                               </div>
                             </div>
                           </div>
@@ -1198,7 +1198,7 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                                   showcaseIndex === 0
                                     ? '/images/nasi_katsu_mentai.jpg'
                                     : showcaseIndex === 1
-                                    ? '/images/pangsit_chili_oil.jpg'
+                                    ? '/images/nasi_ayam_katsu_sambal_matah.jpg'
                                     : '/images/stup_roti_mangga.jpg'
                                 }
                                 alt="Highlight Menu"
@@ -1209,7 +1209,7 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                             <div className="mt-2 text-center">
                               <div className="text-sm font-black text-[#FAF8F5]">
                                 {showcaseIndex === 0 && 'Nasi Katsu Mentai'}
-                                {showcaseIndex === 1 && 'Pangsit Chili Oil'}
+                                {showcaseIndex === 1 && 'Nasi Katsu Sambal Matah'}
                                 {showcaseIndex === 2 && 'Mango Bread Soup'}
                               </div>
                               <div className="inline-flex items-center gap-1 mt-1 px-3 py-0.5 rounded-full bg-[#D4A843] text-[#0F2547] text-xs font-black shadow-md">
@@ -1595,7 +1595,7 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                           showcaseIndex === 0
                             ? '/images/nasi_katsu_mentai.jpg'
                             : showcaseIndex === 1
-                            ? '/images/pangsit_chili_oil.jpg'
+                            ? '/images/nasi_ayam_katsu_sambal_matah.jpg'
                             : '/images/stup_roti_mangga.jpg'
                         }
                         alt="Menu"
@@ -1606,7 +1606,7 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                     <div className="mt-2 text-center">
                       <div className="text-sm font-black text-[#FAF8F5]">
                         {showcaseIndex === 0 && 'Nasi Katsu Mentai'}
-                        {showcaseIndex === 1 && 'Pangsit Chili Oil'}
+                        {showcaseIndex === 1 && 'Nasi Katsu Sambal Matah'}
                         {showcaseIndex === 2 && 'Mango Bread Soup'}
                       </div>
                       <div className="inline-block mt-1 px-3 py-0.5 rounded-full bg-[#D4A843] text-[#0F2547] text-xs font-black">
