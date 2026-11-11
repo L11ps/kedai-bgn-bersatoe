@@ -245,47 +245,39 @@ $$ LANGUAGE plpgsql;
 
 /* 14. SEED INITIAL DATA: PRODUCTS & VARIANTS */
 INSERT INTO products (name, slug, category, price, description, image_url, is_available) VALUES
-('Nasi Katsu Mentai', 'nasi-katsu-mentai', 'Makanan Utama & Camilan', 15000, 'Ayam katsu renyah dengan siraman saus mentai creamy gurih yang di-torch wangi, nori flakes, dan tobiko.', '/images/nasi_katsu_mentai.jpg', true),
-('Nasi Ayam Katsu Sambal Matah', 'nasi-ayam-katsu-sambal-matah', 'Makanan Utama & Camilan', 15000, 'Ayam katsu krispi keemasan di atas nasi hangat pulen dengan sambal matah khas Bali yang segar, pedas mantap, dan harum serai.', '/images/nasi_ayam_katsu_sambal_matah.jpg', true),
-('Jus Buah', 'jus-buah', 'Dessert & Minuman', 13000, 'Jus dari buah tropis segar pilihan tanpa pemanis buatan, disajikan dingin menyegarkan penambah energi.', '/images/jus_buah_murni.jpg', true),
-('Mango bread soup', 'mango-bread-soup', 'Dessert & Minuman', 12000, 'Lapisan roti tawar lembut berpadu vla mangga creamy susu kental manis dengan limpahan keju cheddar parut melimpah.', '/images/stup_roti_mangga.jpg', true)
+('Nasi Goreng Spesial Telur', 'nasi-goreng-spesial-telur', 'Makanan Utama & Camilan', 15000, 'Nasi goreng gurih beraroma wok hei dengan bumbu kecap spesial, sayuran campur, telur ceplok mata sapi, acar timun segar, dan kerupuk renyah.', '/images/nasi_goreng_spesial_telur.jpg', true),
+('Spaghetti Bolognese Keju', 'spaghetti-bolognese-keju', 'Makanan Utama & Camilan', 15000, 'Pasta spaghetti La Fonte kenyal al dente berpadu saus daging bolognese gurih kental, cincangan bombai harum, dan limpahan keju cheddar parut.', '/images/spaghetti_bolognese_keju.jpg', true),
+('Jus Jeruk Segar', 'jus-jeruk-segar', 'Dessert & Minuman', 10000, '100% perasan jeruk segar alami pilihan kaya vitamin C tanpa pemanis buatan, disajikan dingin menyegarkan dalam botol 250ml.', '/images/jus_jeruk_segar.jpg', true)
 ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, image_url = EXCLUDED.image_url;
 
 /* SEED VARIANTS */
 DO $$
 DECLARE
-    v_mentai UUID;
-    v_matah UUID;
+    v_nasgor UUID;
+    v_spageti UUID;
     v_jus UUID;
-    v_mango UUID;
 BEGIN
-    SELECT id INTO v_mentai FROM products WHERE slug = 'nasi-katsu-mentai';
-    SELECT id INTO v_matah FROM products WHERE slug = 'nasi-ayam-katsu-sambal-matah';
-    SELECT id INTO v_jus FROM products WHERE slug = 'jus-buah';
-    SELECT id INTO v_mango FROM products WHERE slug = 'mango-bread-soup';
+    SELECT id INTO v_nasgor FROM products WHERE slug = 'nasi-goreng-spesial-telur';
+    SELECT id INTO v_spageti FROM products WHERE slug = 'spaghetti-bolognese-keju';
+    SELECT id INTO v_jus FROM products WHERE slug = 'jus-jeruk-segar';
 
-    /* Katsu Mentai Variants */
-    DELETE FROM product_variants WHERE product_id = v_mentai;
+    /* Nasgor Variants */
+    DELETE FROM product_variants WHERE product_id = v_nasgor;
     INSERT INTO product_variants (product_id, group_name, is_required, options) VALUES
-    (v_mentai, 'Torch Burn', false, '["Standar", "Ekstra Burn"]'::jsonb),
-    (v_mentai, 'Tambah Chili Flakes', false, '["Ya", "Tidak"]'::jsonb);
+    (v_nasgor, 'Level Pedas', true, '["Tidak Pedas (Manis Gurih)", "Sedang", "Pedas Mantap"]'::jsonb),
+    (v_nasgor, 'Pilihan Telur', true, '["Telur Ceplok 1/2 Matang", "Telur Ceplok Matang", "Telur Dadar"]'::jsonb);
 
-    /* Katsu Sambal Matah Variants */
-    DELETE FROM product_variants WHERE product_id = v_matah;
+    /* Spageti Variants */
+    DELETE FROM product_variants WHERE product_id = v_spageti;
     INSERT INTO product_variants (product_id, group_name, is_required, options) VALUES
-    (v_matah, 'Level Pedas', true, '["Normal", "Ekstra Pedas", "Sambal Pisah"]'::jsonb);
+    (v_spageti, 'Pilihan Rasa', true, '["Original Gurih", "Pedas Cabai Bubuk"]'::jsonb),
+    (v_spageti, 'Porsi Keju', false, '["Standar", "Ekstra Keju Cheddar"]'::jsonb);
 
-    /* Jus Buah Variants */
+    /* Jus Jeruk Variants */
     DELETE FROM product_variants WHERE product_id = v_jus;
     INSERT INTO product_variants (product_id, group_name, is_required, options) VALUES
-    (v_jus, 'Varian Buah', true, '["Mangga", "Jambu", "Alpukat", "Naga"]'::jsonb),
-    (v_jus, 'Takaran Gula', true, '["Normal Sugar", "Less Sugar", "No Sugar"]'::jsonb),
-    (v_jus, 'Takaran Es', true, '["Normal Ice", "Less Ice"]'::jsonb);
-
-    /* Mango bread soup Variants */
-    DELETE FROM product_variants WHERE product_id = v_mango;
-    INSERT INTO product_variants (product_id, group_name, is_required, options) VALUES
-    (v_mango, 'Penyajian', false, '["Dingin", "Suhu Ruang"]'::jsonb);
+    (v_jus, 'Suhu Penyajian', true, '["Dingin Segar", "Tanpa Es (Suhu Ruang)"]'::jsonb),
+    (v_jus, 'Takaran Gula', true, '["Murni Alami (Tanpa Gula)", "Sedikit Gula (Less Sugar)", "Normal Sugar"]'::jsonb);
 END $$;
 
 -- SEED STAFF ACCOUNTS

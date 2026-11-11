@@ -132,10 +132,9 @@ Kabar gembira buat seluruh mahasiswa & civitas akademika Tel-U Jakarta! KEDAI BG
 Gak ada lagi cerita kelaparan nunggu antrean panjang pas jam jeda kuliah! Semua menu disiapkan higienis, porsi mantap, dan rasa gurih nikmat:
 
 🔥 MENU ANDALAN KEDAI BGN:
-1. Nasi Katsu Mentai: Rp15.000 (Creamy torch mentai sauce & nori flakes)
-2. Nasi Ayam Katsu Sambal Matah: Rp15.000 (Ayam krispi + sambal matah harum segar)
-3. Jus Buah: Rp13.000 (100% buah asli segar kaya vitamin)
-4. Mango bread soup: Rp12.000 (Creamy vla mangga + limpahan keju cheddar)
+1. Nasi Goreng Spesial Telur: Rp15.000 (Wok hei gurih + telur mata sapi & kerupuk)
+2. Spaghetti Bolognese Keju: Rp15.000 (Pasta al dente + saus daging & keju cheddar parut)
+3. Jus Jeruk Segar: Rp10.000 (100% perasan jeruk asli murni botol 250ml)
 
 📲 CARA PESAN PRAKTIS VIA WEB:
 1. Kunjungi link di bio kami: @kedai.bgn_telyu
@@ -145,7 +144,7 @@ Gak ada lagi cerita kelaparan nunggu antrean panjang pas jam jeda kuliah! Semua 
 
 Ajak teman sekelas dan pesan sekarang juga! 🚀
 
-#KedaiBgnBersatoe #TelkomUniversityJakarta #AnakTelU #KulinerKampus #TelUHalimun #TelUMinangkabau #TelUDaanMogot #NasiKatsuMentai #KatsuSambalMatah`;
+#KedaiBgnBersatoe #TelkomUniversityJakarta #AnakTelU #KulinerKampus #TelUHalimun #TelUMinangkabau #TelUDaanMogot #NasiGorengSpesial #SpaghettiBolognese #JusJeruk`;
 
   const dailyStoryCaptionText = `🔥 UPDATE STOK READY HARI INI DI KAMPUS TEL-U JAKARTA! 🔥
 
@@ -192,12 +191,11 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
         ctx.font = '24px sans-serif';
         ctx.fillText('Nikmat, Gurih, Porsi Kenyang Mahasiswa Tel-U Jakarta', 540, 185);
 
-        // Draw 4 menu items grid placeholders
+        // Draw 3 menu items grid placeholders
         const menuItems = [
-          { name: 'Nasi Katsu Mentai', price: 'Rp15.000', note: 'Creamy Torch Mentai' },
-          { name: 'Nasi Katsu Sambal Matah', price: 'Rp15.000', note: 'Krispi Sambal Segar' },
-          { name: 'Jus Buah', price: 'Rp13.000', note: '100% Buah Alami' },
-          { name: 'Mango Bread Soup', price: 'Rp12.000', note: 'Vla Mangga & Keju' },
+          { name: 'Nasi Goreng Spesial', price: 'Rp15.000', note: 'Wok Hei & Telur Mata Sapi' },
+          { name: 'Spaghetti Bolognese', price: 'Rp15.000', note: 'Pasta Al Dente & Keju' },
+          { name: 'Jus Jeruk Segar', price: 'Rp10.000', note: '100% Buah Alami 250ml' },
         ];
 
         menuItems.forEach((item, idx) => {
@@ -304,9 +302,9 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
 
         ctx.font = '28px sans-serif';
         ctx.fillStyle = '#9EC6E3';
-        ctx.fillText('• Nasi Katsu Mentai (Creamy Torch Saus Mentai)', 540, 500);
-        ctx.fillText('• Nasi Katsu Sambal Matah (Ayam Krispi Sambal Segar)', 540, 570);
-        ctx.fillText('• Mango Bread Soup (Vla Mangga Lembut & Keju)', 540, 640);
+        ctx.fillText('• Nasi Goreng Spesial Telur (Wok Hei & Telur Mata Sapi)', 540, 500);
+        ctx.fillText('• Spaghetti Bolognese Keju (Pasta Daging Gurih & Keju)', 540, 570);
+        ctx.fillText('• Jus Jeruk Segar (100% Buah Alami Murni Dingin)', 540, 640);
 
         // Price badge
         ctx.fillStyle = '#D4A843';
@@ -316,7 +314,7 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
 
         ctx.fillStyle = '#0F2547';
         ctx.font = '900 34px sans-serif';
-        ctx.fillText('Mulai Rp12.000 - Rp15.000', 540, 792);
+        ctx.fillText('Mulai Rp10.000 - Rp15.000', 540, 792);
 
         // Campus Bar Info
         ctx.fillStyle = '#0B1C36';
@@ -668,8 +666,8 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                           <div className="col-span-2 relative rounded-2xl overflow-hidden border border-[#9EC6E3]/30 bg-[#0F2547]/80 shadow-md flex items-center p-2.5 gap-3">
                             <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 border border-white/20">
                               <Image
-                                src="/images/nasi_katsu_mentai.jpg"
-                                alt="Nasi Katsu Mentai"
+                                src="/images/nasi_goreng_spesial_telur.jpg"
+                                alt="Nasi Goreng Spesial Telur"
                                 fill
                                 className="object-cover"
                               />
@@ -679,10 +677,10 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                                 Signature Dish
                               </div>
                               <div className="text-xs font-black text-[#FAF8F5] truncate">
-                                Nasi Katsu Mentai
+                                Nasi Goreng Spesial Telur
                               </div>
                               <div className="text-[11px] text-slate-300 line-clamp-1">
-                                Ayam krispi + saus mentai gurih torch
+                                Wok hei gurih + telur mata sapi & kerupuk
                               </div>
                               <div className="inline-block mt-1 px-2 py-0.5 rounded-md bg-[#D4A843] text-[#0F2547] text-[11px] font-black">
                                 Rp15.000
@@ -694,15 +692,15 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                           <div className="relative rounded-2xl overflow-hidden border border-[#9EC6E3]/30 bg-[#0F2547]/80 shadow-md p-2 flex flex-col justify-between">
                             <div className="relative w-full h-20 rounded-xl overflow-hidden border border-white/20 mb-1.5">
                               <Image
-                                src="/images/nasi_ayam_katsu_sambal_matah.jpg"
-                                alt="Nasi Katsu Sambal Matah"
+                                src="/images/spaghetti_bolognese_keju.jpg"
+                                alt="Spaghetti Bolognese Keju"
                                 fill
                                 className="object-cover"
                               />
                             </div>
                             <div>
                               <div className="text-[11px] font-extrabold text-[#FAF8F5] truncate">
-                                Nasi Katsu Sambal Matah
+                                Spaghetti Bolognese Keju
                               </div>
                               <div className="text-[10px] text-[#9EC6E3] font-bold">
                                 Rp15.000
@@ -714,18 +712,18 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                           <div className="relative rounded-2xl overflow-hidden border border-[#9EC6E3]/30 bg-[#0F2547]/80 shadow-md p-2 flex flex-col justify-between">
                             <div className="relative w-full h-20 rounded-xl overflow-hidden border border-white/20 mb-1.5">
                               <Image
-                                src="/images/stup_roti_mangga.jpg"
-                                alt="Mango Bread Soup"
+                                src="/images/jus_jeruk_segar.jpg"
+                                alt="Jus Jeruk Segar"
                                 fill
                                 className="object-cover"
                               />
                             </div>
                             <div>
                               <div className="text-[11px] font-extrabold text-[#FAF8F5] truncate">
-                                Mango Bread Soup
+                                Jus Jeruk Segar
                               </div>
                               <div className="text-[10px] text-[#9EC6E3] font-bold">
-                                Rp12.000
+                                Rp10.000
                               </div>
                             </div>
                           </div>
@@ -734,7 +732,7 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                         {/* Price Range Pill */}
                         <div className="text-center pt-1">
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-[#D4A843] to-[#F59E0B] text-[#0F2547] font-black text-xs shadow-md">
-                            Mulai Rp12.000 - Rp15.000 • Porsi Puas
+                            Mulai Rp10.000 - Rp15.000 • Porsi Puas
                           </span>
                         </div>
                       </div>
@@ -1196,10 +1194,10 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                               <Image
                                 src={
                                   showcaseIndex === 0
-                                    ? '/images/nasi_katsu_mentai.jpg'
+                                    ? '/images/nasi_goreng_spesial_telur.jpg'
                                     : showcaseIndex === 1
-                                    ? '/images/nasi_ayam_katsu_sambal_matah.jpg'
-                                    : '/images/stup_roti_mangga.jpg'
+                                    ? '/images/spaghetti_bolognese_keju.jpg'
+                                    : '/images/jus_jeruk_segar.jpg'
                                 }
                                 alt="Highlight Menu"
                                 fill
@@ -1208,13 +1206,13 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                             </div>
                             <div className="mt-2 text-center">
                               <div className="text-sm font-black text-[#FAF8F5]">
-                                {showcaseIndex === 0 && 'Nasi Katsu Mentai'}
-                                {showcaseIndex === 1 && 'Nasi Katsu Sambal Matah'}
-                                {showcaseIndex === 2 && 'Mango Bread Soup'}
+                                {showcaseIndex === 0 && 'Nasi Goreng Spesial Telur'}
+                                {showcaseIndex === 1 && 'Spaghetti Bolognese Keju'}
+                                {showcaseIndex === 2 && 'Jus Jeruk Segar'}
                               </div>
                               <div className="inline-flex items-center gap-1 mt-1 px-3 py-0.5 rounded-full bg-[#D4A843] text-[#0F2547] text-xs font-black shadow-md">
                                 <Sparkles className="w-3 h-3 text-[#0F2547]" />
-                                Rp12.000 - Rp15.000
+                                Rp10.000 - Rp15.000
                               </div>
                             </div>
                           </div>
@@ -1593,10 +1591,10 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                       <Image
                         src={
                           showcaseIndex === 0
-                            ? '/images/nasi_katsu_mentai.jpg'
+                            ? '/images/nasi_goreng_spesial_telur.jpg'
                             : showcaseIndex === 1
-                            ? '/images/nasi_ayam_katsu_sambal_matah.jpg'
-                            : '/images/stup_roti_mangga.jpg'
+                            ? '/images/spaghetti_bolognese_keju.jpg'
+                            : '/images/jus_jeruk_segar.jpg'
                         }
                         alt="Menu"
                         fill
@@ -1605,12 +1603,12 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                     </div>
                     <div className="mt-2 text-center">
                       <div className="text-sm font-black text-[#FAF8F5]">
-                        {showcaseIndex === 0 && 'Nasi Katsu Mentai'}
-                        {showcaseIndex === 1 && 'Nasi Katsu Sambal Matah'}
-                        {showcaseIndex === 2 && 'Mango Bread Soup'}
+                        {showcaseIndex === 0 && 'Nasi Goreng Spesial Telur'}
+                        {showcaseIndex === 1 && 'Spaghetti Bolognese Keju'}
+                        {showcaseIndex === 2 && 'Jus Jeruk Segar'}
                       </div>
                       <div className="inline-block mt-1 px-3 py-0.5 rounded-full bg-[#D4A843] text-[#0F2547] text-xs font-black">
-                        Rp12.000 - Rp15.000
+                        Rp10.000 - Rp15.000
                       </div>
                     </div>
                   </div>

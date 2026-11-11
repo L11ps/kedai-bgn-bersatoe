@@ -55,7 +55,7 @@ export default function ProductCard({
           className={`object-cover transition-transform duration-300 ${
             isAvailable ? 'group-hover:scale-102' : 'grayscale-50'
           }`}
-          priority={product.slug === 'nasi-katsu-mentai' || product.slug === 'nasi-ayam-katsu-sambal-matah'}
+          priority={product.slug === 'nasi-goreng-spesial-telur' || product.slug === 'spaghetti-bolognese-keju'}
         />
 
         {/* Stock / Availability Badge */}
