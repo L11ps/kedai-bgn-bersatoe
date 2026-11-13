@@ -2,12 +2,10 @@
 
 import React, { useState, useEffect, use } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import confetti from 'canvas-confetti';
 import {
   Clock,
   CheckCircle2,
-  Download,
   ExternalLink,
   Store,
   RefreshCw,
@@ -16,6 +14,7 @@ import {
   Copy,
   Check,
   Zap,
+  Banknote,
 } from 'lucide-react';
 import { Order, Payment } from '@/types';
 import { formatIDR } from '@/lib/formatters';
@@ -24,7 +23,7 @@ const STAGES = [
   {
     key: 'PAID',
     label: 'Pesanan Diterima',
-    desc: 'Pembayaran QRIS lunas & pesanan tercatat',
+    desc: 'Pesanan telah masuk antrean dapur & siap dimasak',
     icon: CheckCircle2,
   },
   {
@@ -89,7 +88,7 @@ export default function OrderTrackingPage({
     }
   }, [order?.order_status]);
 
-  // Countdown timer for 15-minute expiry
+  // Countdown timer for 15-minute expiry (only for WAITING_PAYMENT)
   useEffect(() => {
     if (!payment?.expiry_time || order?.order_status !== 'WAITING_PAYMENT') return;
 
@@ -113,7 +112,7 @@ export default function OrderTrackingPage({
   };
 
   const handleSimulatePayment = async () => {
-    if (!order || isSimulating) return;
+    if (!order) return;
     setIsSimulating(true);
     try {
       await fetch('/api/webhooks/simulate', {
@@ -171,10 +170,8 @@ export default function OrderTrackingPage({
 
   const isWaitingPayment = order.order_status === 'WAITING_PAYMENT';
   const isExpired = order.order_status === 'EXPIRED';
-
-  // Current stage index: 0 = Pesanan Diterima (Diproses), 1 = Pesanan Selesai
   const isCompleted = order.order_status === 'COMPLETED';
-  const currentStageIndex = isCompleted ? 1 : 0;
+  const isCash = order.payment_method === 'CASH';
 
   return (
     <div className="min-h-screen bg-[#071324] sm:py-6 flex flex-col items-center justify-start antialiased text-slate-900 selection:bg-[#D4A843] selection:text-[#0F2547]">
@@ -204,8 +201,8 @@ export default function OrderTrackingPage({
         </header>
 
         <div className="p-4 space-y-6 flex-1">
-          {/* CASE A: WAITING_PAYMENT (QRIS / E-Wallet Dynamic) */}
-          {isWaitingPayment ? (
+          {/* CASE A: WAITING_PAYMENT (QRIS / Midtrans Online) */}
+          {isWaitingPayment && !isCash ? (
             <div className="space-y-5">
               {/* Expiry Countdown Box */}
               <div className="bg-amber-500 text-white rounded-3xl p-4 shadow-lg shadow-amber-500/20 text-center space-y-1">
@@ -217,14 +214,14 @@ export default function OrderTrackingPage({
                   <span>{formatTimer(timeLeft)}</span>
                 </div>
                 <p className="text-[11px] text-amber-100">
-                  Selesaikan pembayaran sebelum kode kedaluwarsa otomatis.
+                  Selesaikan pembayaran sebelum batas waktu habis.
                 </p>
               </div>
 
-              {/* QRIS Display Card */}
+              {/* Midtrans / QRIS Display Card */}
               <div className="bg-white rounded-3xl p-5 border-2 border-[#0F2547]/20 shadow-md text-center space-y-4">
                 <div className="inline-block px-3 py-1 rounded-full bg-[#0F2547] text-[#D4A843] border border-[#D4A843]/40 font-bold text-xs">
-                  {payment?.payment_method || 'QRIS Dinamis'}
+                  Pembayaran Online Midtrans
                 </div>
 
                 <div>
@@ -234,58 +231,52 @@ export default function OrderTrackingPage({
                   </span>
                 </div>
 
-                {/* QR Code Container */}
-                <div className="relative w-64 h-64 mx-auto p-3 bg-white rounded-2xl border border-slate-200 shadow-inner flex items-center justify-center">
-                  {payment?.qr_string ? (
-                    <div className="space-y-1">
-                      {/* Generates QR Image dynamically via simple SVG/canvas */}
-                      <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(
-                          payment.qr_string
-                        )}`}
-                        alt="QRIS Barcode"
-                        className="w-56 h-56 mx-auto object-contain"
-                      />
-                    </div>
-                  ) : (
-                    <div className="text-slate-400 text-xs">QRIS tidak tersedia</div>
-                  )}
-                </div>
-
-                <p className="text-[11px] text-slate-500 max-w-[280px] mx-auto leading-relaxed">
-                  Buka BCA Mobile, GoPay, OVO, ShopeePay, DANA, atau aplikasi m-Banking apa pun, lalu scan kode QR di atas.
-                </p>
-
-                {/* Deep-link button for E-Wallets */}
+                {/* Direct Midtrans Link Button */}
                 {payment?.deeplink_url && (
                   <a
                     href={payment.deeplink_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20"
+                    className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-[#0F2547] hover:bg-[#163566] text-[#FAF8F5] font-black text-xs border border-[#D4A843]/60 shadow-lg shadow-[#0F2547]/20 transition-all active:scale-98"
                   >
-                    <span>Buka Aplikasi E-Wallet</span>
-                    <ExternalLink className="w-4 h-4" />
+                    <span>Bayar Sekarang di Midtrans</span>
+                    <ExternalLink className="w-4 h-4 text-[#D4A843]" />
                   </a>
                 )}
 
-                {/* SIMULATE PAYMENT BUTTON (FOR FAST DEMO & TESTING) */}
+                {/* Fallback QRIS Code */}
+                {payment?.qr_string && (
+                  <div className="pt-2">
+                    <p className="text-[11px] text-slate-500 mb-2">
+                      Atau scan QRIS di bawah ini dengan m-Banking / e-Wallet apa saja:
+                    </p>
+                    <div className="relative w-56 h-56 mx-auto p-2 bg-white rounded-2xl border border-slate-200 shadow-inner flex items-center justify-center">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+                          payment.qr_string
+                        )}`}
+                        alt="QRIS Barcode"
+                        className="w-48 h-48 mx-auto object-contain"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Instant Demo Simulation Button */}
                 <div className="pt-3 border-t border-slate-100">
                   <button
                     type="button"
                     disabled={isSimulating}
                     onClick={handleSimulatePayment}
-                    className="w-full min-h-[44px] rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/25 active:scale-95 transition-all"
+                    className="w-full min-h-[42px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/25 active:scale-95 transition-all"
                   >
                     <Zap className="w-4 h-4 text-amber-300" />
                     <span>
-                      {isSimulating
-                        ? 'Memverifikasi Pembayaran...'
-                        : 'Simulasi Bayar Lunas (Instant Settlement)'}
+                      {isSimulating ? 'Memverifikasi...' : 'Simulasi Bayar Lunas (Uji Coba)'}
                     </span>
                   </button>
                   <span className="text-[10px] text-slate-400 mt-1 block">
-                    Mode Pengujian: Klik untuk menguji webhook otomatis & terbit nomor antrean.
+                    Mode Pengujian: Klik untuk menguji settlement otomatis tanpa transfer.
                   </span>
                 </div>
               </div>
@@ -296,7 +287,7 @@ export default function OrderTrackingPage({
               <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
               <h2 className="font-extrabold text-base text-red-900">Pesanan Kedaluwarsa</h2>
               <p className="text-xs text-red-700 max-w-[280px] mx-auto leading-relaxed">
-                Batas waktu pembayaran 15 menit telah habis. Kuota stok menu telah dikembalikan secara otomatis.
+                Batas waktu pembayaran telah habis. Silakan buat pesanan baru.
               </p>
               <Link
                 href="/"
@@ -306,13 +297,13 @@ export default function OrderTrackingPage({
               </Link>
             </div>
           ) : (
-            /* CASE C: PAID / COOKING / READY / COMPLETED */
+            /* CASE C: CONFIRMED / PAID / CASH / COOKING / COMPLETED */
             <div className="space-y-6">
               {/* Highlight Queue Number Card */}
               <div className="bg-gradient-to-br from-[#0F2547] via-[#163566] to-[#0A1628] text-white rounded-3xl p-5 shadow-xl border border-[#D4A843]/40 text-center space-y-2 relative overflow-hidden">
                 <div className="absolute -right-8 -bottom-8 w-28 h-28 rounded-full bg-[#D4A843]/10 blur-xl pointer-events-none" />
                 <span className="inline-block px-3 py-1 rounded-full bg-white/10 text-[11px] font-bold tracking-wider uppercase backdrop-blur-sm border border-white/10">
-                  Nomor Antrean Pesanan
+                  Nomor Antrean Dapur
                 </span>
 
                 <div className="text-5xl font-black tracking-tight text-[#D4A843] drop-shadow-sm py-1">
@@ -329,6 +320,13 @@ export default function OrderTrackingPage({
                     {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
                 </div>
+
+                {isCash && (
+                  <div className="mt-2 pt-2 border-t border-white/10 inline-flex items-center gap-1.5 text-xs text-emerald-300 font-bold bg-emerald-950/40 px-3 py-1 rounded-full">
+                    <Banknote className="w-3.5 h-3.5" />
+                    <span>Bayar Tunai di Tempat: {formatIDR(order.gross_amount)}</span>
+                  </div>
+                )}
               </div>
 
               {/* 2-Stage Real-Time Stepper */}
@@ -338,7 +336,6 @@ export default function OrderTrackingPage({
                 </h2>
 
                 <div className="space-y-4 relative">
-                  {/* Vertical Progress Line */}
                   <div className="absolute left-[19px] top-3 bottom-3 w-0.5 bg-slate-200" />
 
                   {STAGES.map((stg, idx) => {
@@ -414,69 +411,54 @@ export default function OrderTrackingPage({
                 <span className="font-bold text-slate-800">{order.customer_whatsapp}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Metode:</span>
+                <span className="text-slate-400">Metode Bayar:</span>
                 <span className="font-bold text-slate-800">
-                  {order.fulfillment_type === 'DELIVERY' ? 'Antar ke Kampus' : 'Ambil Sendiri'}
+                  {order.payment_method === 'CASH' ? 'Tunai di Tempat (CASH)' : 'Online QRIS (Midtrans)'}
                 </span>
               </div>
-              {order.fulfillment_type === 'DELIVERY' && (
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Gedung Kampus:</span>
-                    <span className="font-bold text-slate-800">{order.campus_location}</span>
-                  </div>
-                  {order.location_notes && (
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Patokan Lokasi:</span>
-                      <span className="font-bold text-slate-800 text-right max-w-[200px]">
-                        {order.location_notes}
-                      </span>
-                    </div>
-                  )}
-                </>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Gedung Kampus:</span>
+                <span className="font-bold text-slate-800">{order.campus_location}</span>
+              </div>
+              {order.location_notes && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Titik Temu:</span>
+                  <span className="font-bold text-slate-800 text-right max-w-[200px]">
+                    {order.location_notes}
+                  </span>
+                </div>
               )}
               <div className="flex justify-between">
-                <span className="text-slate-400">Waktu:</span>
+                <span className="text-slate-400">Jadwal Tiba:</span>
                 <span className="font-bold text-slate-800">{order.scheduled_time}</span>
               </div>
             </div>
           </div>
 
-          {/* Ordered Items Breakdown */}
+          {/* Item Details */}
           <div className="bg-slate-50/70 p-4 rounded-3xl border border-slate-200/70 space-y-2.5 text-xs">
             <h3 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">
-              Rincian Menu
+              Detail Menu Pesanan
             </h3>
-            <div className="divide-y divide-slate-200/60">
-              {order.items?.map((it) => (
-                <div key={it.id} className="py-2 first:pt-0 last:pb-0 flex justify-between gap-2">
+
+            <div className="space-y-2 divide-y divide-slate-200/60">
+              {(order.items || []).map((it) => (
+                <div key={it.id || it.product_id} className="pt-2 first:pt-0 flex items-center justify-between">
                   <div>
                     <span className="font-bold text-slate-800">
                       {it.quantity}x {it.product_name}
                     </span>
-                    {it.selected_options && (
-                      <span className="block text-[10px] text-slate-500">
-                        {Object.values(it.selected_options).join(', ')}
-                      </span>
-                    )}
-                    {it.special_notes && (
-                      <span className="block text-[10px] text-amber-700 italic">
-                        Catatan: &ldquo;{it.special_notes}&rdquo;
-                      </span>
-                    )}
                   </div>
-                  <span className="font-bold text-slate-900 shrink-0">
+                  <span className="font-extrabold text-slate-900">
                     {formatIDR(it.subtotal || it.unit_price * it.quantity)}
                   </span>
                 </div>
               ))}
             </div>
 
-            <div className="pt-2 border-t border-slate-200 flex justify-between text-sm">
-              <span className="font-bold text-slate-900">Total Tagihan</span>
-              <span className="font-black text-[#0F2547]">
-                {formatIDR(order.gross_amount)}
-              </span>
+            <div className="pt-2 border-t border-slate-200 flex items-center justify-between font-black text-slate-900">
+              <span>Total Biaya</span>
+              <span className="text-sm text-[#0F2547]">{formatIDR(order.gross_amount)}</span>
             </div>
           </div>
         </div>

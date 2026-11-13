@@ -64,12 +64,15 @@ async function sendViaGateway(
 export async function sendOrderPaidNotification(order: Order) {
   const phone = formatTo62Phone(order.customer_whatsapp);
   const itemsList = (order.items || [])
-    .map(
-      (it) =>
-        `• ${it.quantity}x ${it.product_name} (${Object.entries(it.selected_options)
-          .map(([k, v]) => `${k}: ${v}`)
-          .join(', ')})`
-    )
+    .map((it) => {
+      const opts =
+        it.selected_options && Object.keys(it.selected_options).length > 0
+          ? ` (${Object.entries(it.selected_options)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(', ')})`
+          : '';
+      return `• ${it.quantity}x ${it.product_name}${opts}`;
+    })
     .join('\n');
 
   const message = `🎉 *PEMBAYARAN BERHASIL (KEDAI BGN BERSATOE)* 🎉

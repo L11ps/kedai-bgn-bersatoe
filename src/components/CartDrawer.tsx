@@ -16,7 +16,6 @@ export default function CartDrawer() {
     clearCart,
     subtotal,
     totalItems,
-    orderType,
     selectedCampus,
   } = useCart();
 
@@ -49,11 +48,9 @@ export default function CartDrawer() {
         {/* Selected Campus & Type Banner */}
         <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200 text-xs flex items-center justify-between text-slate-600">
           <div>
-            <span className="font-semibold text-slate-800">
-              {orderType === 'READY' ? 'Ready Hari Ini' : 'Pre-Order Besok'}
-            </span>
-            <span className="text-slate-400"> • </span>
-            <span>{selectedCampus}</span>
+            <span className="font-bold text-[#0F2547]">Pre-Order (PO Min H-1)</span>
+            <span className="text-slate-400"> &bull; </span>
+            <span className="font-semibold text-slate-700">{selectedCampus}</span>
           </div>
           {items.length > 0 && (
             <button
@@ -84,12 +81,12 @@ export default function CartDrawer() {
             items.map((item) => (
               <div
                 key={item.id}
-                className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs flex flex-col gap-2"
+                className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs flex flex-col gap-2"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <h4 className="font-bold text-xs text-slate-900 truncate">{item.name}</h4>
-                    <span className="text-xs font-semibold text-slate-600">
+                    <span className="text-xs font-semibold text-[#0F2547]">
                       {formatIDR(item.price)}
                     </span>
                   </div>
@@ -102,30 +99,12 @@ export default function CartDrawer() {
                   </button>
                 </div>
 
-                {/* Selected Options */}
-                {item.selected_options && Object.keys(item.selected_options).length > 0 && (
-                  <div className="text-[11px] text-slate-500 flex flex-wrap gap-1">
-                    {Object.entries(item.selected_options).map(([k, v]) => (
-                      <span key={k} className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
-                        {k}: {v}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Special Notes */}
-                {item.special_notes && (
-                  <p className="text-[11px] text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200">
-                    Catatan: &ldquo;{item.special_notes}&rdquo;
-                  </p>
-                )}
-
                 {/* Quantity Controls & Subtotal */}
                 <div className="flex items-center justify-between pt-1 border-t border-slate-100 mt-1">
-                  <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                  <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
                     <button
                       onClick={() => updateQuantity(item.id, -1)}
-                      className="w-6 h-6 flex items-center justify-center rounded bg-white text-slate-700 hover:bg-slate-50 shadow-xs text-xs"
+                      className="w-6 h-6 flex items-center justify-center rounded-lg bg-white text-slate-700 hover:bg-slate-50 shadow-xs text-xs font-bold"
                       aria-label="Kurangi"
                     >
                       <Minus className="w-3 h-3" />
@@ -135,28 +114,31 @@ export default function CartDrawer() {
                     </span>
                     <button
                       onClick={() => updateQuantity(item.id, 1)}
-                      className="w-6 h-6 flex items-center justify-center rounded bg-white text-slate-700 hover:bg-slate-50 shadow-xs text-xs"
+                      className="w-6 h-6 flex items-center justify-center rounded-lg bg-white text-slate-700 hover:bg-slate-50 shadow-xs text-xs font-bold"
                       aria-label="Tambah"
                     >
                       <Plus className="w-3 h-3" />
                     </button>
                   </div>
 
-                  <span className="font-extrabold text-xs text-slate-900">
-                    {formatIDR(item.price * item.quantity)}
-                  </span>
+                  <div className="text-right">
+                    <span className="text-[11px] text-slate-400 block">Subtotal</span>
+                    <span className="font-extrabold text-xs text-slate-900">
+                      {formatIDR(item.price * item.quantity)}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))
           )}
         </div>
 
-        {/* Drawer Footer */}
+        {/* Drawer Footer Checkout */}
         {items.length > 0 && (
           <div className="p-4 border-t border-slate-200 bg-white space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-500">Subtotal</span>
-              <span className="text-base font-extrabold text-slate-900">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-medium">Total Tagihan ({totalItems} porsi)</span>
+              <span className="font-black text-base text-[#0F2547]">
                 {formatIDR(subtotal)}
               </span>
             </div>
@@ -164,9 +146,9 @@ export default function CartDrawer() {
             <Link
               href="/checkout"
               onClick={() => setIsCartOpen(false)}
-              className="w-full h-11 rounded-xl bg-[#0F2547] hover:bg-[#163566] text-[#FAF8F5] border border-[#D4A843]/60 font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-98"
+              className="w-full h-11 rounded-2xl bg-[#0F2547] hover:bg-[#163566] text-[#FAF8F5] border border-[#D4A843]/60 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#0F2547]/20 transition-all active:scale-98"
             >
-              <span>Lanjut ke Checkout</span>
+              <span>Lanjut ke Pembayaran</span>
               <ArrowRight className="w-4 h-4 text-[#D4A843]" />
             </Link>
           </div>

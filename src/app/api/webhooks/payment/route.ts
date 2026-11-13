@@ -145,7 +145,7 @@ export async function POST(req: Request) {
       // 5. AUTO-SYNC TO GOOGLE SHEETS DIVISI KEUANGAN (10 Kolom Standar)
       const itemsSummary = (order.items || [])
         .map((it) => {
-          const opts = Object.entries(it.selected_options)
+          const opts = Object.entries(it.selected_options || {})
             .map(([, v]) => v)
             .join(', ');
           return `${it.quantity}x ${it.product_name}${opts ? ` (${opts})` : ''}`;

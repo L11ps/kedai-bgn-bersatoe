@@ -14,197 +14,50 @@ import {
   Lock,
   ChevronDown,
   Check,
+  Banknote,
+  CalendarCheck,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { formatIDR } from '@/lib/formatters';
-import { CampusLocation, OrderType } from '@/types';
+import { CampusLocation, PaymentMethod } from '@/types';
 
 const CAMPUS_OPTIONS: CampusLocation[] = [
   'Kampus B Halimun',
   'Kampus C Minangkabau',
-  'Kampus SB Daan Mogot',
 ];
 
-// Custom Campus dropdown replacing native select
-function CustomCampusSelect({
-  value,
-  onChange,
-}: {
-  value: CampusLocation;
-  onChange: (c: CampusLocation) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function onOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', onOutside);
-    return () => document.removeEventListener('mousedown', onOutside);
-  }, []);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full text-left font-bold text-slate-900 flex items-center justify-between gap-1 py-0.5 focus:outline-none"
-      >
-        <span className="truncate">{value}</span>
-        <ChevronDown
-          className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-200 ${
-            open ? 'rotate-180' : ''
-          }`}
-        />
-      </button>
-
-      {open && (
-        <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white border border-slate-200 rounded-xl shadow-xl shadow-slate-300/50 py-1 overflow-hidden min-w-[200px]">
-          {CAMPUS_OPTIONS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => {
-                onChange(c);
-                setOpen(false);
-              }}
-              className={`w-full text-left px-3 py-2 text-xs font-semibold flex items-center justify-between transition-colors ${
-                c === value
-                  ? 'bg-[#0F2547]/10 text-[#0F2547] font-bold'
-                  : 'text-slate-700 hover:bg-slate-50'
-              }`}
-            >
-              <span>{c}</span>
-              {c === value && <Check className="w-3.5 h-3.5 text-[#D4A843] shrink-0" />}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+interface DateOption {
+  dateString: string;
+  displayLabel: string;
+  dayName: string;
 }
 
-// Custom Time Slot dropdown replacing native select
-function CustomTimeSlotSelect({
-  value,
-  onChange,
-  disabledSlotsCheck,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  disabledSlotsCheck: (slot: string) => boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+// Generate fallback Monday-Friday dates starting tomorrow
+function getFallbackDates(): DateOption[] {
+  const list: DateOption[] = [];
+  const cur = new Date();
+  cur.setDate(cur.getDate() + 1); // Min H-1
 
-  useEffect(() => {
-    function onOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+  while (list.length < 5) {
+    const day = cur.getDay();
+    if (day >= 1 && day <= 5) {
+      const year = cur.getFullYear();
+      const month = String(cur.getMonth() + 1).padStart(2, '0');
+      const d = String(cur.getDate()).padStart(2, '0');
+      list.push({
+        dateString: `${year}-${month}-${d}`,
+        displayLabel: cur.toLocaleDateString('id-ID', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'short',
+        }),
+        dayName: cur.toLocaleDateString('id-ID', { weekday: 'long' }),
+      });
     }
-    document.addEventListener('mousedown', onOutside);
-    return () => document.removeEventListener('mousedown', onOutside);
-  }, []);
-
-  const isCurrentValueDisabled = disabledSlotsCheck(value);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        id="time-slot"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#0F2547] focus:ring-2 focus:ring-[#D4A843]/20 flex items-center justify-between gap-2 transition-all shadow-xs"
-      >
-        <div className="flex items-center gap-2 truncate">
-          <Clock className="w-4 h-4 text-[#0F2547] shrink-0" />
-          <span className="truncate">{value}</span>
-          {isCurrentValueDisabled && (
-            <span className="text-[10px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 shrink-0">
-              Sudah lewat
-            </span>
-          )}
-        </div>
-        <ChevronDown
-          className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${
-            open ? 'rotate-180' : ''
-          }`}
-        />
-      </button>
-
-      {open && (
-        <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white border border-slate-200 rounded-2xl shadow-2xl shadow-slate-300/60 max-h-60 overflow-y-auto p-1.5 space-y-1">
-          {TIME_SLOTS.map((slot) => {
-            const disabled = disabledSlotsCheck(slot);
-            const isSelected = slot === value;
-
-            return (
-              <button
-                key={slot}
-                type="button"
-                disabled={disabled}
-                onClick={() => {
-                  if (!disabled) {
-                    onChange(slot);
-                    setOpen(false);
-                  }
-                }}
-                className={`w-full text-left min-h-[40px] px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors ${
-                  disabled
-                    ? 'opacity-40 cursor-not-allowed bg-slate-50 text-slate-400'
-                    : isSelected
-                    ? 'bg-[#0F2547]/10 text-[#0F2547] font-bold border border-[#D4A843]/40'
-                    : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Clock className={`w-3.5 h-3.5 ${isSelected ? 'text-[#0F2547]' : 'text-slate-400'}`} />
-                  <span>{slot}</span>
-                </div>
-                {disabled ? (
-                  <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                    Sudah lewat
-                  </span>
-                ) : isSelected ? (
-                  <Check className="w-4 h-4 text-[#D4A843] shrink-0" />
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+    cur.setDate(cur.getDate() + 1);
+  }
+  return list;
 }
-
-// Generate 30-min time slots from 07:00 to 17:00 WIB
-const TIME_SLOTS: string[] = [
-  '07:00 WIB',
-  '07:30 WIB',
-  '08:00 WIB',
-  '08:30 WIB',
-  '09:00 WIB',
-  '09:30 WIB',
-  '10:00 WIB',
-  '10:30 WIB',
-  '11:00 WIB',
-  '11:30 WIB',
-  '12:00 WIB',
-  '12:30 WIB',
-  '13:00 WIB',
-  '13:30 WIB',
-  '14:00 WIB',
-  '14:30 WIB',
-  '15:00 WIB',
-  '15:30 WIB',
-  '16:00 WIB',
-  '16:30 WIB',
-  '17:00 WIB',
-];
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -212,8 +65,6 @@ export default function CheckoutPage() {
     items,
     subtotal,
     clearCart,
-    orderType,
-    setOrderType,
     selectedCampus,
     setSelectedCampus,
   } = useCart();
@@ -222,79 +73,89 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState('');
   const [customerWhatsapp, setCustomerWhatsapp] = useState('');
   const [locationNotes, setLocationNotes] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('QRIS');
+
+  // Operational Date & Time Slots
+  const [availableDates, setAvailableDates] = useState<DateOption[]>(getFallbackDates);
+  const [selectedDate, setSelectedDate] = useState<DateOption>(getFallbackDates()[0]);
+  const [timeSlots, setTimeSlots] = useState<string[]>([
+    '10:00 WIB',
+    '11:00 WIB',
+    '12:00 WIB',
+    '12:30 WIB',
+    '13:00 WIB',
+    '14:00 WIB',
+    '15:00 WIB',
+  ]);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('12:00 WIB');
-  const [simulationMode, setSimulationMode] = useState<boolean>(false);
 
   // Loading & Error State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Current client time for Ready validation
-  const [currentMinutesFromMidnight, setCurrentMinutesFromMidnight] = useState<number>(12 * 60);
-
+  // Fetch admin operational settings (holidays & active slots)
   useEffect(() => {
-    const now = new Date();
-    const mins = now.getHours() * 60 + now.getMinutes();
-    setCurrentMinutesFromMidnight(mins);
+    fetch('/api/settings')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          if (data.availableDates && data.availableDates.length > 0) {
+            setAvailableDates(data.availableDates);
+            setSelectedDate(data.availableDates[0]);
+          }
+          if (data.settings?.activeTimeSlots && data.settings.activeTimeSlots.length > 0) {
+            setTimeSlots(data.settings.activeTimeSlots);
+            setSelectedTimeSlot(data.settings.activeTimeSlots[0]);
+          }
+        }
+      })
+      .catch((err) => console.warn('Using default settings:', err));
   }, []);
 
-  // Format tomorrow date
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowFormatted = tomorrow.toLocaleDateString('id-ID', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'short',
-  });
-
-  // Slot validity check for Ready Hari Ini: must be between 07:00 - 17:00 and at least +30 min from now
-  const isSlotDisabled = (slot: string) => {
-    if (orderType === 'PO' || simulationMode) return false;
-
-    const [hourStr, minPart] = slot.replace(' WIB', '').split(':');
-    const slotMins = parseInt(hourStr, 10) * 60 + parseInt(minPart, 10);
-
-    // Operational window: 07:00 (420 min) to 17:00 (1020 min)
-    if (slotMins < 420 || slotMins > 1020) return true;
-
-    // Must be at least +30 min from now
-    if (slotMins < currentMinutesFromMidnight + 30) return true;
-
-    return false;
-  };
-
-  const isTodayOperationalClosed =
-    orderType === 'READY' &&
-    !simulationMode &&
-    (currentMinutesFromMidnight < 420 || currentMinutesFromMidnight > 1000);
-
-  // Form validations
-  const phoneClean = customerWhatsapp.replace(/\s+/g, '');
-  const isPhoneValid = /^(\+62|62|0)8[1-9][0-9]{6,10}$/.test(phoneClean);
-  const isNameValid = customerName.trim().length >= 3;
-  const isLocationValid = locationNotes.trim().length >= 3;
-  const canSubmit = isNameValid && isPhoneValid && isLocationValid && items.length > 0;
-
-  const handleSubmitCheckout = async (e: React.FormEvent) => {
+  const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit || isSubmitting) return;
-
-    setIsSubmitting(true);
     setErrorMessage('');
 
+    // Form Validations
+    if (!customerName || customerName.trim().length < 3) {
+      setErrorMessage('Nama pemesan wajib diisi minimal 3 karakter.');
+      return;
+    }
+
+    const cleanPhone = customerWhatsapp.replace(/\s+/g, '');
+    const phoneRegex = /^(\+62|62|0)8[1-9][0-9]{6,10}$/;
+    if (!phoneRegex.test(cleanPhone)) {
+      setErrorMessage('Nomor WhatsApp tidak valid. Masukkan nomor WhatsApp aktif (contoh: 081234567890).');
+      return;
+    }
+
+    if (!locationNotes || locationNotes.trim().length < 3) {
+      setErrorMessage('Detail titik temu di kampus wajib diisi (contoh: Depan Lift Lt 2 / Gazebo).');
+      return;
+    }
+
+    if (items.length === 0) {
+      setErrorMessage('Keranjang belanja Anda masih kosong.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
     try {
+      const scheduleString = `${selectedDate.displayLabel} pukul ${selectedTimeSlot}`;
+
       const payload = {
         customer_name: customerName.trim(),
-        customer_whatsapp: phoneClean,
-        order_type: orderType,
+        customer_whatsapp: cleanPhone,
+        order_type: 'PO' as const,
         campus_location: selectedCampus,
         location_notes: locationNotes.trim(),
-        scheduled_time: selectedTimeSlot,
-        payment_method: 'QRIS' as const,
+        scheduled_time: scheduleString,
+        payment_method: paymentMethod,
         items: items.map((it) => ({
           product_id: it.product_id,
           quantity: it.quantity,
-          selected_options: it.selected_options,
+          selected_options: {},
           special_notes: it.special_notes,
         })),
       };
@@ -312,6 +173,8 @@ export default function CheckoutPage() {
       }
 
       clearCart();
+
+      // If QRIS and has redirect_url, we can either redirect to Midtrans or go to order tracking page
       router.push(`/order/${data.order_id}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -322,17 +185,18 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="max-w-[440px] w-full bg-white rounded-2xl p-6 text-center space-y-3 shadow-xs border border-slate-200">
-          <h2 className="font-extrabold text-sm text-slate-900">Keranjang Belanja Kosong</h2>
+      <div className="min-h-screen bg-[#071324] sm:py-6 flex flex-col items-center justify-center p-4">
+        <div className="max-w-[440px] w-full bg-white rounded-3xl p-6 text-center space-y-4 shadow-xl border border-slate-200">
+          <AlertCircle className="w-12 h-12 text-[#D4A843] mx-auto" />
+          <h2 className="font-extrabold text-base text-slate-900">Keranjang Belanja Kosong</h2>
           <p className="text-xs text-slate-500">
             Anda belum memilih menu apa pun untuk checkout.
           </p>
           <Link
             href="/"
-            className="inline-flex h-10 items-center justify-center px-4 rounded-xl bg-[#0F2547] hover:bg-[#163566] text-[#FAF8F5] border border-[#D4A843]/50 font-bold text-xs"
+            className="inline-flex min-h-[44px] items-center justify-center px-6 rounded-2xl bg-[#0F2547] hover:bg-[#163566] text-[#FAF8F5] font-bold text-xs border border-[#D4A843]/50 transition-colors"
           >
-            Kembali ke Katalog
+            Pilih Menu Sekarang
           </Link>
         </div>
       </div>
@@ -341,202 +205,272 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-[#071324] sm:py-6 flex flex-col items-center justify-start antialiased text-slate-900 selection:bg-[#D4A843] selection:text-[#0F2547]">
-      <div className="w-full max-w-[480px] min-h-screen sm:min-h-[92vh] sm:rounded-3xl overflow-hidden bg-white flex flex-col shadow-2xl relative border-x border-slate-200/80 pb-28">
-        {/* Header */}
-        <header className="sticky top-0 z-40 bg-[#0F2547]/95 backdrop-blur-md border-b border-[#9EC6E3]/25 px-4 py-3 flex items-center gap-3">
+      <div className="w-full max-w-[480px] min-h-screen sm:min-h-[92vh] sm:rounded-3xl overflow-hidden bg-white flex flex-col shadow-2xl relative border-x border-slate-200/80 pb-20">
+        {/* Sticky Header */}
+        <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center gap-3">
           <Link
             href="/"
-            className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+            className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors"
             aria-label="Kembali"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="font-extrabold text-sm text-[#FAF8F5]">Checkout Pesanan</h1>
-            <p className="text-[11px] text-[#9EC6E3]">KEDAI BGN BERSATOE • EST. 1998</p>
+            <h1 className="font-extrabold text-sm text-[#0F2547]">Konfirmasi Pemesanan</h1>
+            <p className="text-[11px] text-slate-500">Kedai BGN Bersatoe Tel-U</p>
           </div>
         </header>
 
-        <form onSubmit={handleSubmitCheckout} className="p-4 space-y-4 flex-1">
-          {/* Error Alert */}
-          {errorMessage && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMessage}</span>
+        {/* Error Notification Banner */}
+        {errorMessage && (
+          <div className="m-4 p-3.5 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-2.5 text-xs text-red-700 animate-in fade-in">
+            <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+            <span className="leading-snug">{errorMessage}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmitOrder} className="p-4 space-y-5 flex-1">
+          {/* Section 1: Customer Details */}
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
+            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+              <span className="w-2 h-2 rounded-full bg-[#D4A843]" />
+              <h2 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">
+                1. Data Pemesan
+              </h2>
             </div>
-          )}
 
-          {/* Section 1: Order Type & Campus Summary */}
-          <section className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
-            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-              1. Tipe Pesanan &amp; Lokasi Kampus
-            </span>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-xs">
-                <span className="text-[10px] text-slate-400 block font-medium">Tipe Pesanan</span>
-                <span className="font-bold text-slate-900">
-                  {orderType === 'READY' ? 'Ready Hari Ini' : `Pre-Order Besok (${tomorrowFormatted})`}
-                </span>
-              </div>
-
-              <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-xs">
-                <span className="text-[10px] text-slate-400 block font-medium mb-0.5">Ganti Lokasi</span>
-                <CustomCampusSelect
-                  value={selectedCampus}
-                  onChange={(c) => setSelectedCampus(c)}
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* Section 2: Customer Identity */}
-          <section className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-3">
-            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-              2. Data Pemesan
-            </span>
-
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <label htmlFor="customer-name" className="text-xs font-semibold text-slate-700 block">
-                Nama Pemesan <span className="text-red-500">*</span>
+                Nama Lengkap / Panggilan
               </label>
               <input
                 id="customer-name"
                 type="text"
                 required
+                placeholder="Contoh: Raditya Dharma"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Contoh: Budi Santoso"
-                className="w-full h-10 text-xs px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-[#0F2547] focus:ring-1 focus:ring-[#D4A843]/40"
+                className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-200 text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:border-[#0F2547] focus:ring-2 focus:ring-[#D4A843]/20 transition-all shadow-xs"
               />
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <label htmlFor="customer-wa" className="text-xs font-semibold text-slate-700 block">
-                Nomor WhatsApp <span className="text-red-500">*</span>
+                Nomor WhatsApp Aktif
               </label>
               <input
                 id="customer-wa"
                 type="tel"
                 required
+                placeholder="Contoh: 081234567890"
                 value={customerWhatsapp}
                 onChange={(e) => setCustomerWhatsapp(e.target.value)}
-                placeholder="Contoh: 08123456789 atau 628123456789"
-                className="w-full h-10 text-xs px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-[#0F2547] focus:ring-1 focus:ring-[#D4A843]/40"
+                className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-200 text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:border-[#0F2547] focus:ring-2 focus:ring-[#D4A843]/20 transition-all shadow-xs"
               />
               <p className="text-[10px] text-slate-400">
-                Pemberitahuan nomor antrean dan status antar dikirim via WhatsApp.
+                Nomor ini digunakan untuk kirim nota &amp; notifikasi saat pesanan tiba.
               </p>
             </div>
-          </section>
+          </div>
 
-          {/* Section 3: Campus Meet Point */}
-          <section className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2">
-            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-              3. Titik Temu di Kampus
-            </span>
-
-            <label htmlFor="location-notes" className="text-xs font-semibold text-slate-700 block">
-              Detail Titik Temu / Ruangan di {selectedCampus} <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="location-notes"
-              type="text"
-              required
-              value={locationNotes}
-              onChange={(e) => setLocationNotes(e.target.value)}
-              placeholder="Contoh: Gedung B Lantai 2 Ruang 204, atau Lobi Utama dekat satpam"
-              className="w-full h-10 text-xs px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-[#0F2547] focus:ring-1 focus:ring-[#D4A843]/40"
-            />
-          </section>
-
-          {/* Section 4: Flexible Delivery Time (07:00 - 17:00 WIB) */}
-          <section className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-                4. Jam Pengambilan / Pengantaran
-              </span>
-              <span className="text-[10px] text-slate-400">07:00 s.d. 17:00 WIB</span>
+          {/* Section 2: Campus & Meeting Point */}
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
+            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+              <span className="w-2 h-2 rounded-full bg-[#D4A843]" />
+              <h2 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">
+                2. Lokasi Pengantaran Kampus
+              </h2>
             </div>
-
-            {isTodayOperationalClosed && (
-              <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 space-y-1">
-                <p className="font-semibold">Jam operasional hari ini telah tutup.</p>
-                <p className="text-[11px]">
-                  Pengantaran Ready hari ini berlangsung pukul 07:00 s.d. 17:00 WIB. Silakan ubah ke Pre-Order Besok.
-                </p>
-              </div>
-            )}
 
             <div className="space-y-1.5">
-              <label htmlFor="time-slot" className="text-xs font-semibold text-slate-700 block">
-                Pilih Jam Waktu Tiba
+              <label className="text-xs font-semibold text-slate-700 block">
+                Pilih Kampus Tujuan:
               </label>
-              <CustomTimeSlotSelect
-                value={selectedTimeSlot}
-                onChange={(v) => setSelectedTimeSlot(v)}
-                disabledSlotsCheck={isSlotDisabled}
+              <div className="grid grid-cols-2 gap-2">
+                {CAMPUS_OPTIONS.map((c) => {
+                  const isSel = selectedCampus === c;
+                  const label = c === 'Kampus B Halimun' ? 'Kampus Halimun' : 'Kampus Minangkabau';
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setSelectedCampus(c)}
+                      className={`min-h-[44px] p-2.5 rounded-xl text-left border flex items-center justify-between text-xs font-bold transition-all ${
+                        isSel
+                          ? 'bg-[#0F2547] text-white border-[#0F2547] shadow-sm ring-2 ring-[#D4A843]/40'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span>{label}</span>
+                      <MapPin className={`w-3.5 h-3.5 ${isSel ? 'text-[#D4A843]' : 'text-slate-400'}`} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="location-notes" className="text-xs font-semibold text-slate-700 block">
+                Detail Titik Temu / Ruangan di Kampus
+              </label>
+              <input
+                id="location-notes"
+                type="text"
+                required
+                placeholder="Contoh: Depan Gazebo / Kantin Lt 2 / Kelas 302"
+                value={locationNotes}
+                onChange={(e) => setLocationNotes(e.target.value)}
+                className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-200 text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:border-[#0F2547] focus:ring-2 focus:ring-[#D4A843]/20 transition-all shadow-xs"
               />
             </div>
+          </div>
 
-            {/* Simulation Mode Toggle for Testing */}
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-              <span className="text-slate-400">Uji coba di luar jam operasional?</span>
-              <label className="flex items-center gap-1.5 text-slate-600 cursor-pointer font-medium">
-                <input
-                  type="checkbox"
-                  checked={simulationMode}
-                  onChange={(e) => setSimulationMode(e.target.checked)}
-                  className="rounded text-[#0F2547] focus:ring-0"
-                />
-                <span>Mode Simulasi Testing</span>
+          {/* Section 3: Delivery Date & Time (Min H-1, Senin - Jumat) */}
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
+            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+              <span className="w-2 h-2 rounded-full bg-[#D4A843]" />
+              <h2 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">
+                3. Jadwal Pengantaran (PO Min H-1)
+              </h2>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700 block">
+                Pilih Tanggal Pengantaran (Senin s/d Jumat):
               </label>
-            </div>
-          </section>
-
-          {/* Section 5: Payment Method (ONLY QRIS) */}
-          <section className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2">
-            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-              5. Metode Pembayaran
-            </span>
-
-            <div className="p-3 rounded-xl border-2 border-[#0F2547] bg-[#0F2547]/5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#0F2547] text-[#D4A843] flex items-center justify-center shrink-0 shadow-xs">
-                  <QrCode className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="font-extrabold text-xs text-[#0F2547] block">
-                    QRIS (Semua M-Banking &amp; E-Wallet)
-                  </span>
-                  <span className="text-[10px] text-slate-500 block">
-                    BCA Mobile, Mandiri, BRI, GoPay, OVO, ShopeePay, DANA
-                  </span>
-                </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {availableDates.map((d) => {
+                  const isSel = selectedDate.dateString === d.dateString;
+                  return (
+                    <button
+                      key={d.dateString}
+                      type="button"
+                      onClick={() => setSelectedDate(d)}
+                      className={`p-2.5 rounded-xl text-left border flex items-center justify-between text-xs transition-all ${
+                        isSel
+                          ? 'bg-[#0F2547] text-white border-[#0F2547] font-bold shadow-xs ring-2 ring-[#D4A843]/30'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 font-medium'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <span className={`text-[10px] block ${isSel ? 'text-[#D4A843]' : 'text-slate-400'}`}>
+                          {d.dayName}
+                        </span>
+                        <span className="truncate block font-semibold">{d.displayLabel}</span>
+                      </div>
+                      {isSel && <Check className="w-3.5 h-3.5 text-[#D4A843] shrink-0 ml-1" />}
+                    </button>
+                  );
+                })}
               </div>
-              <span className="text-[10px] font-bold text-[#0F2547] bg-[#D4A843]/25 px-2 py-0.5 rounded-md border border-[#D4A843]/40">
-                Otomatis
-              </span>
             </div>
-          </section>
 
-          {/* Section 6: Summary of Items */}
-          <section className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2 text-xs">
-            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-              6. Rincian Tagihan
-            </span>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700 block">
+                Pilih Jam Waktu Tiba:
+              </label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {timeSlots.map((slot) => {
+                  const isSel = selectedTimeSlot === slot;
+                  return (
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() => setSelectedTimeSlot(slot)}
+                      className={`h-10 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 border transition-all ${
+                        isSel
+                          ? 'bg-[#0F2547] text-white border-[#0F2547] font-bold shadow-xs ring-2 ring-[#D4A843]/30'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Clock className={`w-3 h-3 ${isSel ? 'text-[#D4A843]' : 'text-slate-400'}`} />
+                      <span>{slot}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
 
-            <div className="space-y-1.5 divide-y divide-slate-200">
-              {items.map((it) => (
-                <div key={it.id} className="pt-1.5 first:pt-0 flex items-center justify-between">
-                  <div>
-                    <span className="font-semibold text-slate-800">
-                      {it.quantity}x {it.name}
+          {/* Section 4: Payment Method (QRIS Midtrans vs CASH) */}
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
+            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+              <span className="w-2 h-2 rounded-full bg-[#D4A843]" />
+              <h2 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">
+                4. Metode Pembayaran
+              </h2>
+            </div>
+
+            <div className="space-y-2">
+              {/* Option 1: QRIS Midtrans */}
+              <label
+                onClick={() => setPaymentMethod('QRIS')}
+                className={`p-3.5 rounded-2xl border flex items-start gap-3 cursor-pointer transition-all ${
+                  paymentMethod === 'QRIS'
+                    ? 'bg-[#0F2547]/5 border-[#0F2547] ring-2 ring-[#D4A843]/40'
+                    : 'bg-white border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full border-2 mt-0.5 flex items-center justify-center shrink-0 ${
+                  paymentMethod === 'QRIS' ? 'border-[#0F2547] bg-[#0F2547]' : 'border-slate-300'
+                }`}>
+                  {paymentMethod === 'QRIS' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs text-slate-900">
+                      QRIS / E-Wallet (Midtrans)
                     </span>
-                    <span className="block text-[10px] text-slate-500">
-                      {Object.values(it.selected_options).join(', ')}
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Instan
                     </span>
                   </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Bayar langsung via GoPay, ShopeePay, BCA, Mandiri, atau Scan QRIS semua bank.
+                  </p>
+                </div>
+              </label>
+
+              {/* Option 2: CASH (COD) */}
+              <label
+                onClick={() => setPaymentMethod('CASH')}
+                className={`p-3.5 rounded-2xl border flex items-start gap-3 cursor-pointer transition-all ${
+                  paymentMethod === 'CASH'
+                    ? 'bg-[#0F2547]/5 border-[#0F2547] ring-2 ring-[#D4A843]/40'
+                    : 'bg-white border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full border-2 mt-0.5 flex items-center justify-center shrink-0 ${
+                  paymentMethod === 'CASH' ? 'border-[#0F2547] bg-[#0F2547]' : 'border-slate-300'
+                }`}>
+                  {paymentMethod === 'CASH' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs text-slate-900">
+                      Tunai di Tempat (CASH / COD)
+                    </span>
+                    <span className="text-[10px] font-bold text-[#0F2547] bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                      Uang Pas
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Bayar langsung dengan uang pas saat pesanan diserahkan di titik temu kampus.
+                  </p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Section 5: Order Summary */}
+          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2.5">
+            <h3 className="font-bold text-xs text-slate-900">Ringkasan Pesanan</h3>
+            <div className="space-y-1.5 divide-y divide-slate-200/60">
+              {items.map((it) => (
+                <div key={it.id} className="pt-1.5 first:pt-0 flex items-center justify-between text-xs">
+                  <span className="text-slate-700">
+                    {it.quantity}x {it.name}
+                  </span>
                   <span className="font-bold text-slate-900">
                     {formatIDR(it.price * it.quantity)}
                   </span>
@@ -544,36 +478,38 @@ export default function CheckoutPage() {
               ))}
             </div>
 
-            <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-sm">
-              <span className="font-bold text-slate-700">Total Pembayaran</span>
-              <span className="font-black text-[#0F2547]">{formatIDR(subtotal)}</span>
+            <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+              <span className="font-black text-xs text-[#0F2547]">Total Tagihan</span>
+              <span className="font-black text-sm text-[#0F2547]">
+                {formatIDR(subtotal)}
+              </span>
             </div>
-          </section>
+          </div>
 
-          {/* Sticky Bottom Submit Button */}
-          <div className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 p-4 max-w-[480px] mx-auto z-40">
+          {/* Submit Button */}
+          <div className="pt-2">
             <button
               type="submit"
-              disabled={!canSubmit || isSubmitting}
-              className={`w-full h-11 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
-                canSubmit && !isSubmitting
-                  ? 'bg-[#0F2547] hover:bg-[#163566] text-[#FAF8F5] border border-[#D4A843]/60 shadow-md active:scale-98'
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+              disabled={isSubmitting}
+              className={`w-full min-h-[48px] rounded-2xl font-black text-xs flex items-center justify-center gap-2 shadow-lg transition-all active:scale-98 ${
+                isSubmitting
+                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                  : 'bg-[#0F2547] hover:bg-[#163566] text-[#FAF8F5] border border-[#D4A843]/60 shadow-[#0F2547]/20'
               }`}
             >
               {isSubmitting ? (
                 <span>Memproses Pesanan...</span>
               ) : (
                 <>
-                  <Lock className="w-3.5 h-3.5 text-[#D4A843]" />
-                  <span>Bayar Sekarang ({formatIDR(subtotal)})</span>
+                  <Lock className="w-4 h-4 text-[#D4A843]" />
+                  <span>
+                    {paymentMethod === 'CASH'
+                      ? 'Konfirmasi Pesanan (Bayar Tunai)'
+                      : `Bayar ${formatIDR(subtotal)} via Midtrans`}
+                  </span>
                 </>
               )}
             </button>
-            <p className="text-[10px] text-center text-slate-400 mt-1.5 flex items-center justify-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-emerald-600" />
-              <span>Pembayaran QRIS Aman &amp; Terverifikasi Otomatis</span>
-            </p>
           </div>
         </form>
       </div>

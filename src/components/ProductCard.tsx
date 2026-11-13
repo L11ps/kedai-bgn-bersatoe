@@ -1,88 +1,81 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
-import { Plus, Check, Clock, AlertCircle } from 'lucide-react';
-import { Product, OrderType, CampusLocation } from '@/types';
+import { Plus, Check, Clock, ShoppingBag } from 'lucide-react';
+import { Product } from '@/types';
 import { formatIDR } from '@/lib/formatters';
-import { getProductStockForCampus } from '@/lib/order-store';
+import { useCart } from '@/context/CartContext';
 
 interface ProductCardProps {
   product: Product;
-  orderType: OrderType;
-  selectedCampus: CampusLocation;
-  onOpenCustomization: (product: Product) => void;
-  onSwitchToPO?: () => void;
 }
 
-export default function ProductCard({
-  product,
-  orderType,
-  selectedCampus,
-  onOpenCustomization,
-  onSwitchToPO,
-}: ProductCardProps) {
-  const stockForCampus = getProductStockForCampus(product, selectedCampus);
-  const isReadyMode = orderType === 'READY';
+export default function ProductCard({ product }: ProductCardProps) {
+  const { addToCart, items } = useCart();
+  const [justAdded, setJustAdded] = useState(false);
 
-  // Determine availability
-  const isAvailable = isReadyMode ? stockForCampus > 0 : product.po_available;
+  const isAvailable = product.is_available && product.po_available;
+  const inCartItem = items.find((it) => it.product_id === product.id);
+  const inCartQty = inCartItem?.quantity || 0;
 
-  // Short campus name for compact badge
-  const campusShort =
-    selectedCampus === 'Kampus B Halimun'
-      ? 'Kampus B'
-      : selectedCampus === 'Kampus C Minangkabau'
-      ? 'Kampus C'
-      : 'Kampus SB';
+  const handleAdd = () => {
+    if (!isAvailable) return;
+    addToCart({
+      product_id: product.id,
+      name: product.name,
+      price: product.price,
+      image_url: product.image_url,
+      quantity: 1,
+    });
+    setJustAdded(true);
+    setTimeout(() => setJustAdded(false), 1200);
+  };
 
   return (
     <div
-      onClick={() => isAvailable && onOpenCustomization(product)}
-      className={`group relative bg-white rounded-xl p-3 border border-slate-200 shadow-xs transition-all duration-200 ${
+      onClick={handleAdd}
+      className={`group relative bg-white rounded-2xl p-3 border border-slate-200 shadow-xs transition-all duration-200 ${
         isAvailable
-          ? 'hover:border-slate-300 hover:shadow-sm cursor-pointer'
-          : 'opacity-75 cursor-not-allowed bg-slate-50/60'
+          ? 'hover:border-[#0F2547]/30 hover:shadow-md cursor-pointer'
+          : 'opacity-70 cursor-not-allowed bg-slate-50'
       }`}
     >
       {/* Product Image */}
-      <div className="relative w-full aspect-4/3 rounded-lg overflow-hidden bg-slate-100 mb-2.5">
+      <div className="relative w-full aspect-4/3 rounded-xl overflow-hidden bg-slate-100 mb-2.5">
         <Image
           src={product.image_url}
           alt={product.name}
           fill
           sizes="(max-width: 480px) 100vw, 480px"
           className={`object-cover transition-transform duration-300 ${
-            isAvailable ? 'group-hover:scale-102' : 'grayscale-50'
+            isAvailable ? 'group-hover:scale-103' : 'grayscale-50'
           }`}
           priority={product.slug === 'nasi-goreng-spesial-telur' || product.slug === 'spaghetti-bolognese-keju'}
         />
 
-        {/* Stock / Availability Badge */}
-        <div className="absolute top-2 left-2 right-2 flex items-center justify-between pointer-events-none">
-          {isReadyMode ? (
-            stockForCampus > 0 ? (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/95 text-emerald-700 shadow-xs backdrop-blur-xs border border-emerald-200">
-                <Check className="w-3 h-3 text-emerald-600" />
-                <span>Sisa {stockForCampus} di {campusShort}</span>
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-900/90 text-white shadow-xs backdrop-blur-xs">
-                <AlertCircle className="w-3 h-3 text-slate-300" />
-                <span>Habis Hari Ini</span>
-              </span>
-            )
-          ) : product.po_available ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/95 text-blue-700 shadow-xs backdrop-blur-xs border border-blue-200">
-              <Clock className="w-3 h-3 text-blue-600" />
-              <span>Tersedia PO Besok</span>
+        {/* Availability Badge */}
+        <div className="absolute top-2 left-2 flex items-center gap-1.5 pointer-events-none">
+          {isAvailable ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/95 text-[#0F2547] shadow-xs backdrop-blur-xs border border-[#9EC6E3]/50">
+              <Clock className="w-3 h-3 text-[#D4A843]" />
+              <span>Pre-Order</span>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-800 text-slate-200">
-              PO Tutup
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-900/90 text-white shadow-xs backdrop-blur-xs">
+              <span>Habis</span>
             </span>
           )}
         </div>
+
+        {/* In Cart Indicator */}
+        {inCartQty > 0 && (
+          <div className="absolute top-2 right-2 pointer-events-none">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#D4A843] text-[#0F2547] font-black text-xs shadow-md border-2 border-white">
+              {inCartQty}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -109,24 +102,26 @@ export default function ProductCard({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onOpenCustomization(product);
+                handleAdd();
               }}
-              className="h-9 px-3 rounded-lg font-bold text-xs bg-[#0F2547] hover:bg-[#163566] text-[#FAF8F5] border border-[#D4A843]/50 flex items-center gap-1 shadow-xs transition-all active:scale-95 group-hover:border-[#D4A843]"
+              className={`h-9 px-3.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95 ${
+                justAdded
+                  ? 'bg-emerald-600 text-white border border-emerald-700'
+                  : 'bg-[#0F2547] hover:bg-[#163566] text-[#FAF8F5] border border-[#D4A843]/60'
+              }`}
               aria-label={`Pesan ${product.name}`}
             >
-              <Plus className="w-3.5 h-3.5 text-[#D4A843]" />
-              <span>Pesan</span>
-            </button>
-          ) : isReadyMode && product.po_available && onSwitchToPO ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSwitchToPO();
-              }}
-              className="h-8 px-2.5 rounded-lg text-[11px] font-semibold text-[#0F2547] bg-[#D4A843]/15 hover:bg-[#D4A843]/25 border border-[#D4A843]/40 transition-colors"
-            >
-              Pesan untuk PO Besok
+              {justAdded ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-white" />
+                  <span>Masuk</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="w-3.5 h-3.5 text-[#D4A843]" />
+                  <span>Pesan</span>
+                </>
+              )}
             </button>
           ) : (
             <span className="text-xs text-slate-400 font-medium">Tidak Tersedia</span>

@@ -4,8 +4,7 @@ export type OrderType = 'READY' | 'PO';
 
 export type CampusLocation =
   | 'Kampus B Halimun'
-  | 'Kampus C Minangkabau'
-  | 'Kampus SB Daan Mogot';
+  | 'Kampus C Minangkabau';
 
 export type OrderStatus =
   | 'WAITING_PAYMENT'
@@ -20,7 +19,7 @@ export type UserRole = 'ADMIN' | 'KITCHEN' | 'COURIER' | 'FINANCE';
 
 export type PaymentStatus = 'PENDING' | 'SETTLEMENT' | 'EXPIRE' | 'FAILURE';
 
-export type PaymentMethod = 'QRIS';
+export type PaymentMethod = 'QRIS' | 'CASH';
 
 export interface ProductVariantGroup {
   id: string;
@@ -38,11 +37,8 @@ export interface Product {
   description: string;
   image_url: string;
   is_available: boolean;
-  stock_halimun: number;
-  stock_minangkabau: number;
-  stock_daan_mogot: number;
   po_available: boolean;
-  variants: ProductVariantGroup[];
+  variants?: ProductVariantGroup[];
 }
 
 export interface CartItem {
@@ -52,8 +48,8 @@ export interface CartItem {
   price: number;
   image_url: string;
   quantity: number;
-  selected_options: Record<string, string>;
-  special_notes: string;
+  selected_options?: Record<string, string>;
+  special_notes?: string;
 }
 
 export interface OrderItem {
@@ -63,7 +59,7 @@ export interface OrderItem {
   product_name: string;
   unit_price: number;
   quantity: number;
-  selected_options: Record<string, string>;
+  selected_options?: Record<string, string>;
   special_notes?: string;
   subtotal: number;
 }
@@ -118,7 +114,7 @@ export interface CheckoutPayload {
   items: {
     product_id: string;
     quantity: number;
-    selected_options: Record<string, string>;
+    selected_options?: Record<string, string>;
     special_notes?: string;
   }[];
 }
@@ -130,15 +126,23 @@ export interface CheckoutResponse {
   order_code: string;
   gross_amount: number;
   payment_method: PaymentMethod;
+  redirect_url?: string;
+  snap_token?: string;
   qr_string?: string;
   qr_data_url?: string;
-  expiry_time: string;
+  expiry_time?: string;
+}
+
+export interface OperationalSettings {
+  holidays: string[]; // YYYY-MM-DD
+  activeTimeSlots: string[]; // ['10:00 WIB', '11:00 WIB', ...]
+  allowCash: boolean;
 }
 
 export interface GoogleSheetSyncRow {
   transaction_id: string; // 1. ID Transaksi (BGN-YYYYMMDD-XXXX)
   timestamp_wib: string; // 2. Waktu (WIB)
-  customer_name: string; // 3. Nama Pemesan
+  customer_name: string; // 3. Kontak (Nama)
   contact: string; // 4. Kontak (628xxx)
   items_summary: string; // 5. Item Menu
   gross_amount_formatted: string; // 6. Total Tagihan (Rp...)

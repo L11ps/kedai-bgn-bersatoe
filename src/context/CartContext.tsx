@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { CartItem, OrderType, CampusLocation, Product } from '@/types';
-import { getProductStockForCampus } from '@/lib/order-store';
 
 interface CartContextType {
   items: CartItem[];
@@ -25,13 +24,12 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const CART_STORAGE_KEY = 'bgn_cart_items_v2';
-const ORDER_TYPE_KEY = 'bgn_order_type_v2';
-const CAMPUS_KEY = 'bgn_campus_v2';
+const CART_STORAGE_KEY = 'bgn_cart_items_v3';
+const CAMPUS_KEY = 'bgn_campus_v3';
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [orderType, setOrderTypeState] = useState<OrderType>('READY');
+  const [orderType, setOrderTypeState] = useState<OrderType>('PO'); // Default PO (Min H-1)
   const [selectedCampus, setSelectedCampusState] = useState<CampusLocation>('Kampus B Halimun');
   const [stockNotice, setStockNotice] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -44,15 +42,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (savedItems) {
         setItems(JSON.parse(savedItems));
       }
-      const savedType = localStorage.getItem(ORDER_TYPE_KEY);
-      if (savedType === 'READY' || savedType === 'PO') {
-        setOrderTypeState(savedType);
-      }
       const savedCampus = localStorage.getItem(CAMPUS_KEY);
       if (
         savedCampus === 'Kampus B Halimun' ||
-        savedCampus === 'Kampus C Minangkabau' ||
-        savedCampus === 'Kampus SB Daan Mogot'
+        savedCampus === 'Kampus C Minangkabau'
       ) {
         setSelectedCampusState(savedCampus as CampusLocation);
       }
@@ -76,11 +69,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const setOrderType = (type: OrderType) => {
     setOrderTypeState(type);
-    try {
-      localStorage.setItem(ORDER_TYPE_KEY, type);
-    } catch {
-      // ignore
-    }
   };
 
   const setSelectedCampus = (campus: CampusLocation) => {
@@ -93,11 +81,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addToCart = (newItem: Omit<CartItem, 'id'>) => {
-    const optionsKey = JSON.stringify(newItem.selected_options);
-    const lineId = `${newItem.product_id}_${optionsKey}_${newItem.special_notes.trim()}`;
+    const lineId = newItem.product_id;
 
     setItems((prev) => {
-      const existingIndex = prev.findIndex((item) => item.id === lineId);
+      const existingIndex = prev.findIndex((item) => item.product_id === lineId);
       if (existingIndex > -1) {
         const updated = [...prev];
         updated[existingIndex].quantity += newItem.quantity;
@@ -129,58 +116,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems([]);
   };
 
-  // Re-validate cart items if campus or orderType changed
   const validateCartAgainstProducts = (products: Product[]) => {
     if (items.length === 0 || products.length === 0) return;
 
-    if (orderType === 'READY') {
-      let wasAdjusted = false;
-      const adjustedItems: CartItem[] = [];
-      const messages: string[] = [];
+    let wasAdjusted = false;
+    const adjustedItems: CartItem[] = [];
 
-      items.forEach((item) => {
-        const prod = products.find((p) => p.id === item.product_id);
-        if (!prod) {
-          wasAdjusted = true;
-          return;
-        }
-
-        const available = getProductStockForCampus(prod, selectedCampus);
-        if (available <= 0) {
-          wasAdjusted = true;
-          messages.push(`"${item.name}" dihapus dari keranjang karena stok habis di ${selectedCampus}.`);
-        } else if (item.quantity > available) {
-          wasAdjusted = true;
-          messages.push(`Jumlah "${item.name}" disesuaikan menjadi ${available} porsi sesuai stok di ${selectedCampus}.`);
-          adjustedItems.push({ ...item, quantity: available });
-        } else {
-          adjustedItems.push(item);
-        }
-      });
-
-      if (wasAdjusted) {
-        setItems(adjustedItems);
-        setStockNotice(messages.join(' '));
+    items.forEach((item) => {
+      const prod = products.find((p) => p.id === item.product_id);
+      if (!prod || !prod.is_available) {
+        wasAdjusted = true;
+      } else {
+        adjustedItems.push(item);
       }
-    } else if (orderType === 'PO') {
-      let wasAdjusted = false;
-      const adjustedItems: CartItem[] = [];
-      const messages: string[] = [];
+    });
 
-      items.forEach((item) => {
-        const prod = products.find((p) => p.id === item.product_id);
-        if (prod && !prod.po_available) {
-          wasAdjusted = true;
-          messages.push(`"${item.name}" dihapus karena tidak tersedia untuk PO Besok.`);
-        } else {
-          adjustedItems.push(item);
-        }
-      });
-
-      if (wasAdjusted) {
-        setItems(adjustedItems);
-        setStockNotice(messages.join(' '));
-      }
+    if (wasAdjusted) {
+      setItems(adjustedItems);
+      setStockNotice('Beberapa menu disesuaikan karena ketersediaan.');
     }
   };
 

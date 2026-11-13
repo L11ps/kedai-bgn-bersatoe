@@ -30,10 +30,9 @@ type FeedSlideIndex = 0 | 1 | 2;
 type CampusFilter = 'ALL' | CampusLocation;
 
 const CAMPUS_LIST: { id: CampusFilter; name: string; short: string }[] = [
-  { id: 'ALL', name: 'Semua 3 Kampus', short: 'Semua Kampus' },
+  { id: 'ALL', name: 'Semua Kampus', short: 'Semua Kampus' },
   { id: 'Kampus B Halimun', name: 'Kampus B Halimun', short: 'Halimun' },
   { id: 'Kampus C Minangkabau', name: 'Kampus C Minangkabau', short: 'Minangkabau' },
-  { id: 'Kampus SB Daan Mogot', name: 'Kampus SB Daan Mogot', short: 'Daan Mogot' },
 ];
 
 export default function SocialKitPage() {
@@ -95,10 +94,7 @@ export default function SocialKitPage() {
 
   // Calculate live campus stock for a product
   const getProductCampusStock = (p: Product, filter: CampusFilter): number => {
-    if (filter === 'Kampus B Halimun') return p.stock_halimun;
-    if (filter === 'Kampus C Minangkabau') return p.stock_minangkabau;
-    if (filter === 'Kampus SB Daan Mogot') return p.stock_daan_mogot;
-    return p.stock_halimun + p.stock_minangkabau + p.stock_daan_mogot;
+    return p.po_available ? 25 : 0;
   };
 
   // Total ready items count

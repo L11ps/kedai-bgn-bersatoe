@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import QRCode from 'qrcode';
 import { CheckoutPayload } from '@/types';
-import { getProducts, createOrderInMemory, getProductStockForCampus } from '@/lib/order-store';
+import { getProducts, createOrderInMemory } from '@/lib/order-store';
 import { isSupabaseConfigured, supabaseAdmin } from '@/lib/supabase';
+import { appendToGoogleSheet, formatIDR, formatWIB, formatTo62Phone } from '@/lib/google-sheets';
+import { sendOrderPaidNotification, sendOperationalGroupSummary } from '@/lib/whatsapp';
 
 export async function POST(req: Request) {
   try {
@@ -29,11 +30,11 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Validation: Campus Location & Location Notes
-    const validCampuses = ['Kampus B Halimun', 'Kampus C Minangkabau', 'Kampus SB Daan Mogot'];
+    // 3. Validation: Campus Location (Halimun & Minangkabau)
+    const validCampuses = ['Kampus B Halimun', 'Kampus C Minangkabau'];
     if (!validCampuses.includes(body.campus_location)) {
       return NextResponse.json(
-        { success: false, message: 'Pilih lokasi kampus yang valid.' },
+        { success: false, message: 'Pilih lokasi kampus yang valid (Kampus Halimun atau Kampus Minangkabau).' },
         { status: 400 }
       );
     }
@@ -48,10 +49,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4. Validation: Scheduled Time
+    // 4. Validation: Scheduled Time / Delivery Date & Slot
     if (!body.scheduled_time) {
       return NextResponse.json(
-        { success: false, message: 'Pilih jam pengantaran / pengambilan pesanan.' },
+        { success: false, message: 'Pilih jadwal tanggal dan jam pengantaran pesanan.' },
         { status: 400 }
       );
     }
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 6. SERVER-SIDE STOCK & PRICE CALCULATION
+    // 6. SERVER-SIDE PRICE CALCULATION
     const currentProducts = getProducts();
     let serverGrossAmount = 0;
     const validatedCartItems = [];
@@ -78,50 +79,11 @@ export async function POST(req: Request) {
         );
       }
 
-      // Check stock based on order_type
-      if (body.order_type === 'READY') {
-        const availableStock = getProductStockForCampus(prod, body.campus_location);
-        if (availableStock <= 0) {
-          return NextResponse.json(
-            {
-              success: false,
-              message: `Menu "${prod.name}" sudah habis hari ini di ${body.campus_location}. Silakan pesan untuk Pre-Order Besok.`,
-            },
-            { status: 400 }
-          );
-        }
-        if (item.quantity > availableStock) {
-          return NextResponse.json(
-            {
-              success: false,
-              message: `Stok "${prod.name}" di ${body.campus_location} hanya tersisa ${availableStock} porsi.`,
-            },
-            { status: 400 }
-          );
-        }
-      } else if (body.order_type === 'PO') {
-        if (!prod.po_available) {
-          return NextResponse.json(
-            {
-              success: false,
-              message: `Menu "${prod.name}" sedang tidak menerima Pre-Order Besok.`,
-            },
-            { status: 400 }
-          );
-        }
-      }
-
-      // Check required variants
-      for (const variant of prod.variants) {
-        if (variant.is_required && !item.selected_options?.[variant.group_name]) {
-          return NextResponse.json(
-            {
-              success: false,
-              message: `Opsi wajib "${variant.group_name}" untuk ${prod.name} belum dipilih.`,
-            },
-            { status: 400 }
-          );
-        }
+      if (!prod.is_available) {
+        return NextResponse.json(
+          { success: false, message: `Menu "${prod.name}" sedang tidak tersedia.` },
+          { status: 400 }
+        );
       }
 
       const itemQty = Math.max(1, Math.min(item.quantity, 50));
@@ -135,54 +97,88 @@ export async function POST(req: Request) {
         price: prod.price,
         image_url: prod.image_url,
         quantity: itemQty,
-        selected_options: item.selected_options || {},
+        selected_options: {},
         special_notes: (item.special_notes || '').slice(0, 100),
       });
     }
 
-    // 7. Expiry time: 15 minutes from now
+    // 7. Payment Method Handling (QRIS vs CASH)
+    const paymentMethod = body.payment_method === 'CASH' ? 'CASH' : 'QRIS';
     const now = new Date();
     const expiryDate = new Date(now.getTime() + 15 * 60 * 1000);
     const expiryIso = expiryDate.toISOString();
 
-    // 8. Generate Dynamic QRIS string & QR data URL
-    const qrisPayload = `00020101021226670014ID.LINKAJA.WWW011893600911002160912302150000000000000000303UME51440014ID.CO.QRIS.WWW0215ID10200216091230303UME52045812530336054${String(
-      serverGrossAmount
-    ).length.toString().padStart(2, '0')}${serverGrossAmount}5802ID5919KEDAI BGN BERSATOE6007JAKARTA61051174062240120BGN${Date.now()}6304${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    let redirectUrl: string | undefined = undefined;
+    let snapToken: string | undefined = undefined;
 
-    let qrDataUrl = '';
-    try {
-      qrDataUrl = await QRCode.toDataURL(qrisPayload, {
-        width: 320,
-        margin: 2,
-        color: {
-          dark: '#0f172a',
-          light: '#ffffff',
-        },
-      });
-    } catch (err) {
-      console.error('Error generating QR code image:', err);
+    // 8. If QRIS, Call Real Midtrans Snap API
+    if (paymentMethod === 'QRIS') {
+      const serverKey = process.env.MIDTRANS_SERVER_KEY || 'Mid-server-4RfU8KEF~CpMJ_FH0NdS-RR5';
+      const isProduction = !serverKey.startsWith('SB-');
+      const snapEndpoint = isProduction
+        ? 'https://app.midtrans.com/snap/v1/transactions'
+        : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+
+      const authHeader = 'Basic ' + Buffer.from(serverKey + ':').toString('base64');
+      const tempOrderCode = `BGN-${Date.now()}`;
+
+      try {
+        const midtransRes = await fetch(snapEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: authHeader,
+          },
+          body: JSON.stringify({
+            transaction_details: {
+              order_id: tempOrderCode,
+              gross_amount: serverGrossAmount,
+            },
+            customer_details: {
+              first_name: body.customer_name.trim(),
+              phone: phoneClean,
+            },
+            item_details: validatedCartItems.map((it) => ({
+              id: it.product_id,
+              price: it.price,
+              quantity: it.quantity,
+              name: it.name.slice(0, 50),
+            })),
+          }),
+        });
+
+        const midtransData = await midtransRes.json();
+        if (midtransRes.ok && midtransData.token) {
+          snapToken = midtransData.token;
+          redirectUrl = midtransData.redirect_url;
+        } else {
+          console.warn('[Midtrans API Warning]:', midtransData);
+        }
+      } catch (midtransErr) {
+        console.error('[Midtrans API Error]:', midtransErr);
+      }
     }
 
-    // 9. Create Order in Memory Store (reduces campus stock if READY)
-    const { order } = createOrderInMemory({
+    // 9. Create Order in Memory Store
+    const { order, payment } = createOrderInMemory({
       customer_name: body.customer_name.trim(),
       customer_whatsapp: phoneClean,
-      order_type: body.order_type,
+      order_type: 'PO',
       campus_location: body.campus_location,
       location_notes: body.location_notes.trim(),
       scheduled_time: body.scheduled_time,
-      payment_method: 'QRIS',
+      payment_method: paymentMethod,
       items: validatedCartItems,
       gross_amount: serverGrossAmount,
-      qr_string: qrisPayload,
+      redirect_url: redirectUrl,
       expiry_time: expiryIso,
     });
 
     // 10. Persist to Supabase if configured
     if (isSupabaseConfigured && supabaseAdmin) {
       try {
-        const { error: orderErr } = await supabaseAdmin.from('orders').insert({
+        await supabaseAdmin.from('orders').insert({
           id: order.id,
           order_code: order.order_code,
           customer_name: order.customer_name,
@@ -192,24 +188,55 @@ export async function POST(req: Request) {
           location_notes: order.location_notes,
           scheduled_time: order.scheduled_time,
           gross_amount: order.gross_amount,
-          order_status: 'WAITING_PAYMENT',
+          order_status: order.order_status,
+          queue_number: order.queue_number,
         });
-        if (orderErr) {
-          console.error('[Supabase Order Insert Error]:', orderErr);
-        }
       } catch (dbErr) {
         console.warn('[Supabase Insert Error]:', dbErr);
       }
+    }
+
+    // 11. If CASH, auto-sync to Google Sheets and notify WhatsApp immediately
+    if (paymentMethod === 'CASH') {
+      const itemsSummary = validatedCartItems
+        .map((it) => `${it.quantity}x ${it.name}`)
+        .join('; ');
+
+      const sheetRowData = {
+        transaction_id: order.order_code,
+        timestamp_wib: formatWIB(new Date().toISOString()),
+        customer_name: order.customer_name,
+        contact: formatTo62Phone(order.customer_whatsapp),
+        items_summary: itemsSummary,
+        gross_amount_formatted: formatIDR(order.gross_amount),
+        payment_method: 'CASH (Tunai di Tempat)',
+        mdr_fee_formatted: formatIDR(0),
+        net_revenue_formatted: formatIDR(order.gross_amount),
+        order_status: 'Menunggu Pengantaran (CASH)',
+      };
+
+      appendToGoogleSheet(sheetRowData).catch((err) =>
+        console.error('[Google Sheet Sync Error (CASH)]:', err)
+      );
+
+      sendOrderPaidNotification(order).catch((err) =>
+        console.error('[WhatsApp Notification Error (CASH)]:', err)
+      );
+
+      sendOperationalGroupSummary(order).catch((err) =>
+        console.error('[WhatsApp Group Error (CASH)]:', err)
+      );
     }
 
     return NextResponse.json({
       success: true,
       order_id: order.id,
       order_code: order.order_code,
+      queue_number: order.queue_number,
       gross_amount: serverGrossAmount,
-      payment_method: 'QRIS',
-      qr_string: qrisPayload,
-      qr_data_url: qrDataUrl,
+      payment_method: paymentMethod,
+      redirect_url: redirectUrl,
+      snap_token: snapToken,
       expiry_time: expiryIso,
     });
   } catch (err: unknown) {
