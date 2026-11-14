@@ -352,13 +352,33 @@ export function expirePaymentInMemory(orderId: string) {
   return { order, expired: false };
 }
 
-// Update order status: WAITING_PAYMENT -> COOKING -> COMPLETED
-export function updateOrderStatusInMemory(orderId: string, newStatus: OrderStatus) {
+// Update order status: WAITING_PAYMENT -> COOKING -> COMPLETED (supports delivery photo proof)
+export function updateOrderStatusInMemory(
+  orderId: string,
+  newStatus: OrderStatus,
+  deliveryProofUrl?: string | null
+) {
   const order = global.__BGN_ORDERS__?.find((o) => o.id === orderId || o.order_code === orderId);
   if (!order) return null;
 
   order.order_status = newStatus;
   order.updated_at = new Date().toISOString();
+  if (deliveryProofUrl) {
+    order.delivery_proof_url = deliveryProofUrl;
+  }
+  if (['PAID', 'COOKING', 'READY_FOR_DELIVERY', 'COMPLETED'].includes(newStatus)) {
+    if (!order.queue_number) {
+      order.queue_number = generateKitchenQueueNumber();
+    }
+    const payment = global.__BGN_PAYMENTS__?.find((p) => p.order_id === order.id);
+    if (payment) {
+      payment.payment_status = 'SETTLEMENT';
+      payment.paid_at = payment.paid_at || new Date().toISOString();
+      if (deliveryProofUrl) {
+        payment.deeplink_url = deliveryProofUrl;
+      }
+    }
+  }
   return order;
 }
 

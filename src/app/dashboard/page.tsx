@@ -26,6 +26,11 @@ import {
   FileText,
   Copy,
   FileSpreadsheet,
+  Camera,
+  Eye,
+  Upload,
+  Banknote,
+  CheckCircle2,
 } from 'lucide-react';
 import { Order, OrderStatus, Product, CampusLocation, OperationalSettings } from '@/types';
 import { formatIDR, formatWIB, formatTo62Phone } from '@/lib/formatters';
@@ -47,19 +52,19 @@ const CAMPUS_COLORS: Record<CampusLocation, string> = {
   'Kampus C Minangkabau': 'bg-sky-50 text-sky-700 border-sky-200',
 };
 
-const WAITING_STATUSES: OrderStatus[] = ['WAITING_PAYMENT'];
+const WAITING_STATUSES: string[] = ['WAITING_PAYMENT', 'PENDING'];
 const PROCESSING_STATUSES: OrderStatus[] = ['PAID', 'COOKING', 'READY_FOR_DELIVERY'];
 const DONE_STATUSES: OrderStatus[] = ['COMPLETED'];
 
-function getStatusGroup(status: OrderStatus): 'WAITING' | 'PROCESSING' | 'DONE' | 'OTHER' {
+function getStatusGroup(status: OrderStatus | string): 'WAITING' | 'PROCESSING' | 'DONE' | 'OTHER' {
   if (WAITING_STATUSES.includes(status)) return 'WAITING';
-  if (PROCESSING_STATUSES.includes(status)) return 'PROCESSING';
-  if (DONE_STATUSES.includes(status)) return 'DONE';
+  if (PROCESSING_STATUSES.includes(status as OrderStatus)) return 'PROCESSING';
+  if (DONE_STATUSES.includes(status as OrderStatus)) return 'DONE';
   return 'OTHER';
 }
 
-function statusLabel(status: OrderStatus, paymentMethod: string): string {
-  if (status === 'WAITING_PAYMENT') {
+function statusLabel(status: OrderStatus | string, paymentMethod: string): string {
+  if (status === 'WAITING_PAYMENT' || status === 'PENDING') {
     return paymentMethod === 'CASH' ? 'Menunggu Bayar (CASH)' : 'Menunggu Bayar';
   }
   switch (status) {
@@ -76,11 +81,11 @@ function statusLabel(status: OrderStatus, paymentMethod: string): string {
     case 'CANCELLED':
       return 'Dibatalkan';
     default:
-      return status;
+      return String(status);
   }
 }
 
-function statusPill(status: OrderStatus): string {
+function statusPill(status: OrderStatus | string): string {
   const group = getStatusGroup(status);
   const base =
     'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border';
@@ -169,8 +174,9 @@ const STATUS_OPTIONS: SelectOption[] = [
   { value: 'DONE', label: 'Selesai' },
 ];
 
-const nextStatusMap: Partial<Record<OrderStatus, { label: string; value: OrderStatus }>> = {
+const nextStatusMap: Record<string, { label: string; value: OrderStatus }> = {
   WAITING_PAYMENT: { label: 'Konfirmasi Bayar', value: 'PAID' },
+  PENDING: { label: 'Konfirmasi Bayar', value: 'PAID' },
   PAID: { label: 'Mulai Masak', value: 'COOKING' },
   COOKING: { label: 'Siap Diantar', value: 'READY_FOR_DELIVERY' },
   READY_FOR_DELIVERY: { label: 'Tandai Selesai', value: 'COMPLETED' },
@@ -215,6 +221,17 @@ export default function AdminDashboard() {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Cash / COD Delivery Proof Modal state
+  const [proofModalOpen, setProofModalOpen] = useState(false);
+  const [orderForProof, setOrderForProof] = useState<Order | null>(null);
+  const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
+  const [proofError, setProofError] = useState('');
+  const [viewingProofUrl, setViewingProofUrl] = useState<string | null>(null);
+
+  // Financial recap filter state
+  const [financeFilter, setFinanceFilter] = useState<'ALL' | 'PAID' | 'PENDING'>('ALL');
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -393,10 +410,18 @@ export default function AdminDashboard() {
   const countHalimun = orders.filter((o) => o.campus_location === 'Kampus B Halimun').length;
   const countMinangkabau = orders.filter((o) => o.campus_location === 'Kampus C Minangkabau').length;
 
-  const paidOrders = orders.filter((o) =>
+  const validFinanceOrders = orders.filter(
+    (o) => o.order_status !== 'CANCELLED' && o.order_status !== 'EXPIRED'
+  );
+  const paidOrders = validFinanceOrders.filter((o) =>
     [...PROCESSING_STATUSES, ...DONE_STATUSES].includes(o.order_status)
   );
+  const pendingOrders = validFinanceOrders.filter(
+    (o) => !['PAID', 'COOKING', 'READY_FOR_DELIVERY', 'COMPLETED'].includes(o.order_status)
+  );
+
   const totalGross = paidOrders.reduce((acc, o) => acc + (o.gross_amount || 0), 0);
+  const totalPendingGross = pendingOrders.reduce((acc, o) => acc + (o.gross_amount || 0), 0);
   const totalMdr = paidOrders.reduce((acc, o) => {
     if (o.payment_method === 'CASH') return acc;
     const pay = o.payments?.[0];
@@ -407,37 +432,159 @@ export default function AdminDashboard() {
     (o) => getStatusGroup(o.order_status) === 'PROCESSING'
   ).length;
 
+  const displayedFinanceOrders = validFinanceOrders.filter((o) => {
+    const isPaid = [...PROCESSING_STATUSES, ...DONE_STATUSES].includes(o.order_status);
+    if (financeFilter === 'PAID') return isPaid;
+    if (financeFilter === 'PENDING') return !isPaid;
+    return true;
+  });
+
+  const handleOpenProofModal = (order: Order) => {
+    setOrderForProof(order);
+    setProofPreview(null);
+    setProofError('');
+    setProofModalOpen(true);
+  };
+
+  const handleFileSelectProof = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setProofError('');
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new window.Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 900;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+          setProofPreview(dataUrl);
+        } else {
+          setProofPreview(ev.target?.result as string);
+        }
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmitCashProof = async () => {
+    if (!orderForProof) return;
+    if (!proofPreview) {
+      setProofError('Wajib melampirkan foto pembeli saat serah terima makanan dan pembayaran tunai!');
+      return;
+    }
+
+    setIsUploadingProof(true);
+    setProofError('');
+
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: orderForProof.id,
+          newStatus: 'PAID',
+          proofBase64: proofPreview,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setProofError(data.message || 'Gagal menyimpan konfirmasi pembayaran.');
+        return;
+      }
+
+      const updatedOrder = data.order || {
+        ...orderForProof,
+        order_status: 'PAID' as OrderStatus,
+        delivery_proof_url: proofPreview,
+      };
+
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderForProof.id ? { ...o, ...updatedOrder } : o))
+      );
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`bgn_order_${orderForProof.id}`, JSON.stringify(updatedOrder));
+          const cached: Order[] = JSON.parse(
+            localStorage.getItem('bgn_recent_orders') || '[]'
+          );
+          const nextCached = cached.map((o) =>
+            o.id === orderForProof.id ? { ...o, ...updatedOrder } : o
+          );
+          localStorage.setItem('bgn_recent_orders', JSON.stringify(nextCached));
+        } catch {
+          /* silent */
+        }
+      }
+
+      setProofModalOpen(false);
+      setOrderForProof(null);
+      setProofPreview(null);
+      await fetchOrders();
+    } catch {
+      setProofError('Terjadi kesalahan jaringan saat mengunggah foto.');
+    } finally {
+      setIsUploadingProof(false);
+    }
+  };
+
   const handleExportCSV = () => {
     const header = [
       'ID Pesanan',
       'Waktu',
       'Pembeli',
+      'WhatsApp',
       'Kampus',
       'Menu',
       'Metode',
       'Gross',
       'MDR',
       'Net',
-      'Status',
+      'Status Pembayaran',
+      'Bukti Foto',
     ].join(',');
-    const rows = paidOrders.map((o) => {
+    const rows = displayedFinanceOrders.map((o) => {
+      const isPaid = [...PROCESSING_STATUSES, ...DONE_STATUSES].includes(o.order_status);
       const isCash = o.payment_method === 'CASH';
-      const mdrFee = isCash
-        ? 0
-        : o.payments?.[0]?.mdr_fee_amount ?? Math.round((o.gross_amount || 0) * 0.007);
-      const netRev = (o.gross_amount || 0) - mdrFee;
+      const mdrFee = isPaid
+        ? isCash
+          ? 0
+          : o.payments?.[0]?.mdr_fee_amount ?? Math.round((o.gross_amount || 0) * 0.007)
+        : 0;
+      const netRev = isPaid ? (o.gross_amount || 0) - mdrFee : 0;
       const items = (o.items || []).map((it) => `${it.quantity}x ${it.product_name}`).join('; ');
+      const proof = o.delivery_proof_url || o.payments?.[0]?.deeplink_url || '-';
       return [
         o.order_code,
         formatWIB(o.created_at),
         `"${o.customer_name}"`,
+        `"${o.customer_whatsapp}"`,
         `"${o.campus_location}"`,
         `"${items}"`,
         o.payment_method,
         o.gross_amount,
         mdrFee,
         netRev,
-        statusLabel(o.order_status, o.payment_method),
+        isPaid ? 'LUNAS' : 'MENUNGGU BAYAR',
+        `"${proof}"`,
       ].join(',');
     });
     const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
@@ -464,19 +611,23 @@ export default function AdminDashboard() {
       .filter((o) => o.payment_method !== 'CASH')
       .reduce((acc, o) => acc + (o.gross_amount || 0), 0);
 
-    const rowsHtml = paidOrders
+    const rowsHtml = displayedFinanceOrders
       .map((o, idx) => {
+        const isPaid = [...PROCESSING_STATUSES, ...DONE_STATUSES].includes(o.order_status);
         const isCash = o.payment_method === 'CASH';
-        const mdrFee = isCash
-          ? 0
-          : o.payments?.[0]?.mdr_fee_amount ?? Math.round((o.gross_amount || 0) * 0.007);
-        const netRev = (o.gross_amount || 0) - mdrFee;
+        const mdrFee = isPaid
+          ? isCash
+            ? 0
+            : o.payments?.[0]?.mdr_fee_amount ?? Math.round((o.gross_amount || 0) * 0.007)
+          : 0;
+        const netRev = isPaid ? (o.gross_amount || 0) - mdrFee : 0;
         const items = (o.items || [])
           .map((it) => `${it.quantity}x ${it.product_name}`)
           .join(', ');
         const campus = CAMPUS_LABELS[o.campus_location] || o.campus_location;
         const notes = [o.location_notes, o.order_notes].filter(Boolean).join(' | ');
         const rowBg = idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC';
+        const proof = o.delivery_proof_url || o.payments?.[0]?.deeplink_url || null;
 
         return `
           <tr style="background-color: ${rowBg};">
@@ -491,8 +642,9 @@ export default function AdminDashboard() {
             <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: center; font-weight: bold;">${o.payment_method}</td>
             <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; mso-number-format:'#,##0';">${o.gross_amount || 0}</td>
             <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; color: #DC2626; mso-number-format:'#,##0';">${mdrFee}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold; color: #059669; mso-number-format:'#,##0';">${netRev}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: center;">${statusLabel(o.order_status, o.payment_method)}</td>
+            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold; color: ${isPaid ? '#059669' : '#D97706'}; mso-number-format:'#,##0';">${isPaid ? netRev : 'Pending'}</td>
+            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: center; font-weight: bold; color: ${isPaid ? '#059669' : '#D97706'};">${isPaid ? 'LUNAS' : 'MENUNGGU BAYAR'}</td>
+            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: center;">${proof ? `<a href="${proof}" target="_blank">Lihat Bukti Foto</a>` : '-'}</td>
           </tr>
         `;
       })
@@ -526,38 +678,38 @@ export default function AdminDashboard() {
       <body>
         <table>
           <tr>
-            <td colspan="13" style="background-color: #0F2547; color: #FAF8F5; font-size: 16pt; font-weight: bold; text-align: center; padding: 16px; border: 1px solid #0F2547;">
+            <td colspan="14" style="background-color: #0F2547; color: #FAF8F5; font-size: 16pt; font-weight: bold; text-align: center; padding: 16px; border: 1px solid #0F2547;">
               KEDAI BGN BERSATOE - REKAP LAPORAN KEUANGAN &amp; TRANSAKSI
             </td>
           </tr>
           <tr>
-            <td colspan="13" style="background-color: #1E3A5F; color: #D4A843; font-size: 10pt; font-weight: bold; text-align: center; padding: 6px; border: 1px solid #1E3A5F;">
+            <td colspan="14" style="background-color: #1E3A5F; color: #D4A843; font-size: 10pt; font-weight: bold; text-align: center; padding: 6px; border: 1px solid #1E3A5F;">
               Waktu Ekspor: ${todayStr} | Tel-U Kampus Halimun &amp; Minangkabau
             </td>
           </tr>
-          <tr><td colspan="13" style="height: 12px;"></td></tr>
+          <tr><td colspan="14" style="height: 12px;"></td></tr>
         </table>
 
         <table style="border: 2px solid #0F2547; margin-bottom: 16px;">
           <tr style="background-color: #F1F5F9;">
-            <th colspan="3" style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-size: 11pt; color: #475569;">Total Omzet Kotor (Gross)</th>
+            <th colspan="3" style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-size: 11pt; color: #475569;">Total Omzet Masuk (Lunas)</th>
             <th colspan="3" style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-size: 11pt; color: #DC2626;">Total Potongan MDR QRIS (0.7%)</th>
             <th colspan="4" style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-size: 11pt; color: #059669;">Pendapatan Bersih (Net Revenue)</th>
-            <th colspan="3" style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-size: 11pt; color: #0F2547;">Total Transaksi Lunas</th>
+            <th colspan="4" style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-size: 11pt; color: #0F2547;">Total Transaksi (${paidOrders.length} Lunas, ${pendingOrders.length} Pending)</th>
           </tr>
           <tr style="background-color: #FFFFFF;">
             <td colspan="3" style="border: 1px solid #CBD5E1; padding: 12px; font-size: 14pt; font-weight: bold; color: #0F2547; mso-number-format:'#,##0';">${totalGross}</td>
             <td colspan="3" style="border: 1px solid #CBD5E1; padding: 12px; font-size: 14pt; font-weight: bold; color: #DC2626; mso-number-format:'#,##0';">-${totalMdr}</td>
             <td colspan="4" style="border: 1px solid #CBD5E1; padding: 12px; font-size: 14pt; font-weight: bold; color: #059669; mso-number-format:'#,##0';">${totalNet}</td>
-            <td colspan="3" style="border: 1px solid #CBD5E1; padding: 12px; font-size: 14pt; font-weight: bold; color: #0F2547;">${paidOrders.length} Pesanan</td>
+            <td colspan="4" style="border: 1px solid #CBD5E1; padding: 12px; font-size: 14pt; font-weight: bold; color: #0F2547;">${displayedFinanceOrders.length} Pesanan</td>
           </tr>
           <tr style="background-color: #F8FAFC;">
-            <td colspan="3" style="border: 1px solid #CBD5E1; padding: 6px; font-size: 9pt; color: #64748B;">QRIS: ${formatIDR(totalQrisGross)} | Cash: ${formatIDR(totalCashGross)}</td>
+            <td colspan="3" style="border: 1px solid #CBD5E1; padding: 6px; font-size: 9pt; color: #64748B;">Lunas: ${formatIDR(totalGross)} | Pending: ${formatIDR(totalPendingGross)}</td>
             <td colspan="3" style="border: 1px solid #CBD5E1; padding: 6px; font-size: 9pt; color: #64748B;">MDR 0% untuk Tunai Cash</td>
             <td colspan="4" style="border: 1px solid #CBD5E1; padding: 6px; font-size: 9pt; color: #64748B;">Hasil Bersih Masuk Kas</td>
-            <td colspan="3" style="border: 1px solid #CBD5E1; padding: 6px; font-size: 9pt; color: #64748B;">Status Lunas / Selesai</td>
+            <td colspan="4" style="border: 1px solid #CBD5E1; padding: 6px; font-size: 9pt; color: #64748B;">Status Rekap Terintegrasi</td>
           </tr>
-          <tr><td colspan="13" style="height: 16px;"></td></tr>
+          <tr><td colspan="14" style="height: 16px;"></td></tr>
         </table>
 
         <table style="border: 1px solid #94A3B8;">
@@ -576,15 +728,16 @@ export default function AdminDashboard() {
               <th style="border: 1px solid #475569; padding: 10px; font-size: 10pt; text-align: right;">MDR QRIS (Rp)</th>
               <th style="border: 1px solid #475569; padding: 10px; font-size: 10pt; text-align: right;">Net Bersih (Rp)</th>
               <th style="border: 1px solid #475569; padding: 10px; font-size: 10pt; text-align: center;">Status</th>
+              <th style="border: 1px solid #475569; padding: 10px; font-size: 10pt; text-align: center;">Bukti Foto</th>
             </tr>
           </thead>
           <tbody>
-            ${rowsHtml || '<tr><td colspan="13" style="text-align: center; padding: 20px;">Belum ada transaksi lunas.</td></tr>'}
+            ${rowsHtml || '<tr><td colspan="14" style="text-align: center; padding: 20px;">Belum ada transaksi.</td></tr>'}
           </tbody>
           <tfoot>
             <tr style="background-color: #E2E8F0; font-weight: bold;">
               <td colspan="9" style="border: 1px solid #94A3B8; padding: 10px; text-align: right; font-size: 11pt; color: #0F2547;">
-                TOTAL KESELURUHAN:
+                TOTAL KESELURUHAN LUNAS:
               </td>
               <td style="border: 1px solid #94A3B8; padding: 10px; text-align: right; font-size: 11pt; color: #0F2547; mso-number-format:'#,##0';">
                 ${totalGross}
@@ -595,8 +748,8 @@ export default function AdminDashboard() {
               <td style="border: 1px solid #94A3B8; padding: 10px; text-align: right; font-size: 11pt; color: #059669; mso-number-format:'#,##0';">
                 ${totalNet}
               </td>
-              <td style="border: 1px solid #94A3B8; padding: 10px; text-align: center; font-size: 10pt; color: #0F2547;">
-                ${paidOrders.length} LUNAS
+              <td colspan="2" style="border: 1px solid #94A3B8; padding: 10px; text-align: center; font-size: 10pt; color: #0F2547;">
+                ${paidOrders.length} TRANSAKSI LUNAS
               </td>
             </tr>
           </tfoot>
@@ -604,7 +757,7 @@ export default function AdminDashboard() {
 
         <table style="margin-top: 20px;">
           <tr>
-            <td colspan="13" style="font-size: 9pt; color: #94A3B8; text-align: right; font-style: italic;">
+            <td colspan="14" style="font-size: 9pt; color: #94A3B8; text-align: right; font-style: italic;">
               Laporan resmi Kedai BGN Bersatoe Tel-U. Digenerate otomatis oleh Sistem Operasional.
             </td>
           </tr>
@@ -933,7 +1086,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Orders Table */}
+            {/* Orders Table (Fit Layar Penuh Tanpa Horizontal Scroll) */}
             <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
               {isLoading ? (
                 <div className="py-20 text-center flex flex-col items-center gap-2 text-sm text-slate-400">
@@ -948,30 +1101,18 @@ export default function AdminDashboard() {
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
+                <div className="w-full overflow-hidden">
+                  <table className="w-full text-left table-fixed">
                     <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50/80">
-                        {[
-                          'Antrean & ID',
-                          'Pembeli',
-                          'Kampus & Titik Temu',
-                          'Jadwal Tiba',
-                          'Menu Pesanan',
-                          'Total & Bayar',
-                          'Kontak WA',
-                          'Status & Aksi',
-                        ].map((h) => (
-                          <th
-                            key={h}
-                            className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap"
-                          >
-                            {h}
-                          </th>
-                        ))}
+                      <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th className="w-[20%] px-3 py-3">Antrean &amp; Pemesan</th>
+                        <th className="w-[24%] px-3 py-3">Pengantaran &amp; Titik Temu</th>
+                        <th className="w-[22%] px-3 py-3">Menu Pesanan</th>
+                        <th className="w-[16%] px-3 py-3">Total &amp; Bayar</th>
+                        <th className="w-[18%] px-3 py-3">Status &amp; Aksi</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100 text-xs">
                       {filteredOrders.map((order) => {
                         const phone = formatTo62Phone(order.customer_whatsapp);
                         const campusShort =
@@ -985,106 +1126,142 @@ export default function AdminDashboard() {
 
                         const next = nextStatusMap[order.order_status];
                         const isUpdating = isUpdatingStatus === order.id;
+                        const isCashOrder = order.payment_method === 'CASH';
+                        const isWaitingOrPending =
+                          order.order_status === 'WAITING_PAYMENT' ||
+                          (order.order_status as string) === 'PENDING';
+                        const proofUrl =
+                          order.delivery_proof_url ||
+                          (order.payments?.[0]?.deeplink_url?.startsWith('http')
+                            ? order.payments[0].deeplink_url
+                            : null);
 
                         return (
                           <tr
                             key={order.id}
                             className="hover:bg-slate-50/60 transition-colors align-top"
                           >
-                            <td className="px-4 py-3.5 whitespace-nowrap">
-                              <div className="text-base font-black text-[#0F2547]">
-                                {order.queue_number || '-'}
+                            {/* Kolom 1: Antrean & Pemesan */}
+                            <td className="px-3 py-3">
+                              <div className="flex items-center gap-2">
+                                <span className="text-base font-black text-[#0F2547]">
+                                  {order.queue_number || '-'}
+                                </span>
+                                <span className="font-mono text-[10px] text-slate-400">
+                                  {order.order_code}
+                                </span>
                               </div>
-                              <div className="font-mono text-[11px] text-slate-400">
-                                {order.order_code}
-                              </div>
-                            </td>
-
-                            <td className="px-4 py-3.5 whitespace-nowrap">
-                              <div className="font-bold text-xs text-slate-900">
+                              <div className="font-bold text-slate-900 mt-1 truncate" title={order.customer_name}>
                                 {order.customer_name}
                               </div>
-                              <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-                                {order.customer_whatsapp}
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[11px] text-slate-500 font-mono truncate">
+                                  {order.customer_whatsapp}
+                                </span>
+                                <a
+                                  href={waUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-all active:scale-95 inline-flex items-center justify-center shrink-0"
+                                  title="Chat WhatsApp Pelanggan"
+                                >
+                                  <MessageSquare className="w-3 h-3" />
+                                </a>
                               </div>
                             </td>
 
-                            <td className="px-4 py-3.5">
-                              <span
-                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                                  CAMPUS_COLORS[order.campus_location] ||
-                                  'bg-slate-100 text-slate-600 border-slate-200'
-                                }`}
-                              >
-                                <MapPin className="w-2.5 h-2.5" />
-                                {campusShort}
-                              </span>
-                              {order.location_notes && (
-                                <p className="mt-1 text-[11px] text-slate-600 max-w-[200px] leading-snug">
-                                  {order.location_notes}
-                                </p>
-                              )}
+                            {/* Kolom 2: Pengantaran & Titik Temu */}
+                            <td className="px-3 py-3">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                    CAMPUS_COLORS[order.campus_location] ||
+                                    'bg-slate-100 text-slate-600 border-slate-200'
+                                  }`}
+                                >
+                                  <MapPin className="w-2.5 h-2.5" />
+                                  {campusShort}
+                                </span>
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                  <Clock className="w-2.5 h-2.5 text-[#0F2547]" />
+                                  <span>{order.scheduled_time.split(' pukul ')[1] || order.scheduled_time}</span>
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-700 font-medium mt-1 leading-snug">
+                                <span className="text-slate-400">Titik: </span>
+                                <span>{order.location_notes || '-'}</span>
+                              </div>
                               {order.order_notes && (
-                                <p className="mt-1 text-[11px] text-amber-800 bg-amber-50 rounded-md px-1.5 py-0.5 border border-amber-200/60 max-w-[200px] leading-snug">
+                                <div className="mt-1 text-[10px] text-amber-800 bg-amber-50 rounded-md px-1.5 py-0.5 border border-amber-200/60 leading-tight">
                                   <strong>Catatan:</strong> {order.order_notes}
-                                </p>
+                                </div>
                               )}
                             </td>
 
-                            <td className="px-4 py-3.5 whitespace-nowrap">
-                              <div className="flex items-center gap-1 text-xs font-semibold text-slate-700">
-                                <Clock className="w-3.5 h-3.5 text-[#0F2547]" />
-                                <span>{order.scheduled_time}</span>
-                              </div>
-                            </td>
-
-                            <td className="px-4 py-3.5">
-                              <div className="space-y-1 min-w-[180px]">
+                            {/* Kolom 3: Menu Pesanan */}
+                            <td className="px-3 py-3">
+                              <div className="space-y-1">
                                 {order.items?.map((it) => (
-                                  <div key={it.id} className="text-xs text-slate-800">
-                                    <span className="font-bold">{it.quantity}x</span>{' '}
+                                  <div key={it.id || it.product_id} className="text-xs text-slate-800 leading-snug">
+                                    <span className="font-bold text-[#0F2547]">{it.quantity}x</span>{' '}
                                     <span>{it.product_name}</span>
                                   </div>
                                 ))}
                               </div>
                             </td>
 
-                            <td className="px-4 py-3.5 whitespace-nowrap">
-                              <div className="text-xs font-extrabold text-slate-900">
+                            {/* Kolom 4: Total & Bayar */}
+                            <td className="px-3 py-3">
+                              <div className="text-xs font-black text-slate-900">
                                 {formatIDR(order.gross_amount)}
                               </div>
-                              <span
-                                className={`inline-block mt-0.5 text-[9px] font-black uppercase px-2 py-0.5 rounded ${
-                                  order.payment_method === 'CASH'
-                                    ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                                    : 'bg-blue-100 text-blue-800 border border-blue-300'
-                                }`}
-                              >
-                                {order.payment_method}
-                              </span>
+                              <div className="mt-1 flex items-center gap-1">
+                                <span
+                                  className={`inline-block text-[9px] font-black uppercase px-2 py-0.5 rounded border ${
+                                    order.payment_method === 'CASH'
+                                      ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                      : 'bg-blue-100 text-blue-800 border-blue-300'
+                                  }`}
+                                >
+                                  {order.payment_method}
+                                </span>
+                              </div>
+                              {/* Tombol Lihat Foto Bukti jika ada */}
+                              {proofUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => setViewingProofUrl(proofUrl)}
+                                  className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-[10px] font-bold transition-colors cursor-pointer"
+                                  title="Lihat Foto Bukti Serah Terima Makanan"
+                                >
+                                  <Camera className="w-3 h-3 text-emerald-600" />
+                                  <span>Foto Bukti</span>
+                                </button>
+                              )}
                             </td>
 
-                            {/* WhatsApp Button (Revisi 9) */}
-                            <td className="px-4 py-3.5 whitespace-nowrap">
-                              <a
-                                href={waUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95"
-                                title="Kirim Pesan WhatsApp Siap Ambil"
-                              >
-                                <MessageSquare className="w-3.5 h-3.5" />
-                                <span>Hubungi WA</span>
-                              </a>
-                            </td>
-
-                            <td className="px-4 py-3.5 whitespace-nowrap">
-                              <div className="flex items-start gap-2">
-                                <div className="space-y-2 flex-1">
+                            {/* Kolom 5: Status & Aksi */}
+                            <td className="px-3 py-3">
+                              <div className="flex items-start gap-1.5">
+                                <div className="space-y-1.5 flex-1 min-w-0">
                                   <span className={statusPill(order.order_status)}>
                                     {statusLabel(order.order_status, order.payment_method)}
                                   </span>
-                                  {next && (
+
+                                  {/* Khusus COD / CASH yang Menunggu Bayar: Wajib Upload Bukti Foto */}
+                                  {isCashOrder && isWaitingOrPending ? (
+                                    <div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenProofModal(order)}
+                                        className="h-7 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold flex items-center gap-1 transition-all shadow-xs active:scale-95"
+                                        title="Konfirmasi Lunas & Upload Foto Serah Terima"
+                                      >
+                                        <Camera className="w-3 h-3 text-white" />
+                                        <span>Konfirmasi Lunas</span>
+                                      </button>
+                                    </div>
+                                  ) : next ? (
                                     <div>
                                       <button
                                         type="button"
@@ -1100,8 +1277,9 @@ export default function AdminDashboard() {
                                         {next.label}
                                       </button>
                                     </div>
-                                  )}
+                                  ) : null}
                                 </div>
+
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1111,7 +1289,7 @@ export default function AdminDashboard() {
                                     setDeleteError('');
                                     setDeleteModalOpen(true);
                                   }}
-                                  className="p-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors shadow-xs mt-0.5 shrink-0"
+                                  className="p-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors shadow-xs shrink-0"
                                   title="Hapus Pesanan Testing (Perlu Password Admin)"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -1549,49 +1727,85 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* TAB 3: REKAP KEUANGAN */}
+        {/* TAB 3: REKAP KEUANGAN TERINTEGRASI */}
         {activeTab === 'FINANCE' && (
           <div className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {[
-                {
-                  label: 'Total Omzet Kotor (Gross)',
-                  value: formatIDR(totalGross),
-                  sub: `${paidOrders.length} transaksi lunas`,
-                  valueClass: 'text-slate-900',
-                },
-                {
-                  label: 'Potongan MDR QRIS',
-                  value: formatIDR(totalMdr),
-                  sub: 'Tarif standar QRIS 0,7% (Cash 0%)',
-                  valueClass: 'text-rose-600',
-                },
-                {
-                  label: 'Pendapatan Bersih (Net Revenue)',
-                  value: formatIDR(totalNet),
-                  sub: 'Setelah potongan MDR',
-                  valueClass: 'text-emerald-600',
-                },
-              ].map((card) => (
-                <div
-                  key={card.label}
-                  className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-1"
-                >
-                  <p className="text-xs text-slate-500 font-medium">{card.label}</p>
-                  <p className={`text-2xl font-black ${card.valueClass}`}>{card.value}</p>
-                  <p className="text-[11px] text-slate-400">{card.sub}</p>
-                </div>
-              ))}
+            {/* KPI Cards Ringkasan Eksekutif */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs space-y-1">
+                <p className="text-xs text-slate-500 font-medium">Total Omzet Masuk (Lunas)</p>
+                <p className="text-xl font-black text-slate-900">{formatIDR(totalGross)}</p>
+                <p className="text-[11px] text-emerald-600 font-bold">{paidOrders.length} transaksi sudah lunas</p>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs space-y-1">
+                <p className="text-xs text-slate-500 font-medium">Potensi Omzet Pending</p>
+                <p className="text-xl font-black text-amber-600">{formatIDR(totalPendingGross)}</p>
+                <p className="text-[11px] text-amber-700 font-medium">{pendingOrders.length} pesanan belum lunas</p>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs space-y-1">
+                <p className="text-xs text-slate-500 font-medium">Potongan MDR QRIS</p>
+                <p className="text-xl font-black text-rose-600">{formatIDR(totalMdr)}</p>
+                <p className="text-[11px] text-slate-400">Tarif 0,7% QRIS (Cash 0%)</p>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs space-y-1">
+                <p className="text-xs text-slate-500 font-medium">Pendapatan Bersih (Net)</p>
+                <p className="text-xl font-black text-emerald-600">{formatIDR(totalNet)}</p>
+                <p className="text-[11px] text-slate-400">Kas bersih setelah MDR</p>
+              </div>
             </div>
 
+            {/* Tabel Riwayat Keuangan */}
             <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <h3 className="font-bold text-sm text-slate-900">Riwayat Transaksi Lunas</h3>
-                  <p className="text-[11px] text-slate-400">
-                    Rekap transaksi pesanan yang telah lunas dan terverifikasi
-                  </p>
+              <div className="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div>
+                    <h3 className="font-bold text-sm text-slate-900">Riwayat Transaksi Keuangan</h3>
+                    <p className="text-[11px] text-slate-400">
+                      Seluruh transaksi pesanan masuk, lunas, dan menunggu pembayaran
+                    </p>
+                  </div>
+
+                  {/* Filter Pills */}
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setFinanceFilter('ALL')}
+                      className={`h-7 px-2.5 rounded-lg font-bold transition-all ${
+                        financeFilter === 'ALL'
+                          ? 'bg-[#0F2547] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Semua ({validFinanceOrders.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFinanceFilter('PAID')}
+                      className={`h-7 px-2.5 rounded-lg font-bold transition-all ${
+                        financeFilter === 'PAID'
+                          ? 'bg-[#0F2547] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Lunas ({paidOrders.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFinanceFilter('PENDING')}
+                      className={`h-7 px-2.5 rounded-lg font-bold transition-all ${
+                        financeFilter === 'PENDING'
+                          ? 'bg-[#0F2547] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Menunggu Bayar ({pendingOrders.length})
+                    </button>
+                  </div>
                 </div>
+
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -1613,87 +1827,131 @@ export default function AdminDashboard() {
                   </button>
                 </div>
               </div>
-              {paidOrders.length === 0 ? (
+
+              {displayedFinanceOrders.length === 0 ? (
                 <div className="py-16 text-center">
-                  <p className="text-sm text-slate-400">Belum ada transaksi lunas.</p>
+                  <p className="text-sm text-slate-400">Tidak ada data transaksi pada kategori ini.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                <div className="w-full overflow-hidden">
+                  <table className="w-full text-left table-fixed text-xs">
                     <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50/80">
-                        {[
-                          'ID Transaksi',
-                          'Waktu',
-                          'Nama',
-                          'Kampus',
-                          'Detail Menu',
-                          'Metode',
-                          'Gross',
-                          'MDR',
-                          'Net',
-                          'Status',
-                        ].map((h) => (
-                          <th
-                            key={h}
-                            className="px-3 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap"
-                          >
-                            {h}
-                          </th>
-                        ))}
+                      <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th className="w-[14%] px-3 py-3">ID &amp; Waktu</th>
+                        <th className="w-[18%] px-3 py-3">Pembeli &amp; Kampus</th>
+                        <th className="w-[20%] px-3 py-3">Menu Pesanan</th>
+                        <th className="w-[12%] px-3 py-3">Metode &amp; Bukti</th>
+                        <th className="w-[12%] px-3 py-3 text-right">Gross (Rp)</th>
+                        <th className="w-[10%] px-3 py-3 text-right">MDR (Rp)</th>
+                        <th className="w-[14%] px-3 py-3 text-right">Net / Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {paidOrders.map((o) => {
+                      {displayedFinanceOrders.map((o) => {
+                        const isPaid = [...PROCESSING_STATUSES, ...DONE_STATUSES].includes(o.order_status);
                         const isCash = o.payment_method === 'CASH';
-                        const mdrFee = isCash
-                          ? 0
-                          : o.payments?.[0]?.mdr_fee_amount ??
-                            Math.round((o.gross_amount || 0) * 0.007);
-                        const netRev = (o.gross_amount || 0) - mdrFee;
+                        const mdrFee = isPaid
+                          ? isCash
+                            ? 0
+                            : o.payments?.[0]?.mdr_fee_amount ??
+                              Math.round((o.gross_amount || 0) * 0.007)
+                          : 0;
+                        const netRev = isPaid ? (o.gross_amount || 0) - mdrFee : 0;
                         const itemsStr = (o.items || [])
                           .map((it) => `${it.quantity}x ${it.product_name}`)
                           .join(', ');
+                        const proof =
+                          o.delivery_proof_url ||
+                          (o.payments?.[0]?.deeplink_url?.startsWith('http')
+                            ? o.payments[0].deeplink_url
+                            : null);
+
                         return (
                           <tr key={o.id} className="hover:bg-slate-50/60 transition-colors">
-                            <td className="px-3 py-3 font-mono font-bold text-[#0F2547] whitespace-nowrap">
-                              {o.order_code}
+                            <td className="px-3 py-3 align-top">
+                              <div className="font-mono font-bold text-[#0F2547]">
+                                {o.order_code}
+                              </div>
+                              <div className="text-[10px] text-slate-400 mt-0.5">
+                                {formatWIB(o.created_at)}
+                              </div>
                             </td>
-                            <td className="px-3 py-3 text-slate-500 whitespace-nowrap">
-                              {formatWIB(o.created_at)}
+
+                            <td className="px-3 py-3 align-top">
+                              <div className="font-semibold text-slate-800 truncate" title={o.customer_name}>
+                                {o.customer_name}
+                              </div>
+                              <div className="mt-1">
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                                    CAMPUS_COLORS[o.campus_location] ||
+                                    'bg-slate-100 text-slate-500 border-slate-200'
+                                  }`}
+                                >
+                                  {CAMPUS_LABELS[o.campus_location] || o.campus_location}
+                                </span>
+                              </div>
                             </td>
-                            <td className="px-3 py-3 font-semibold text-slate-800 whitespace-nowrap">
-                              {o.customer_name}
+
+                            <td className="px-3 py-3 align-top">
+                              <p className="text-slate-600 line-clamp-2 leading-snug" title={itemsStr}>
+                                {itemsStr}
+                              </p>
                             </td>
-                            <td className="px-3 py-3 whitespace-nowrap">
+
+                            <td className="px-3 py-3 align-top">
                               <span
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                                  CAMPUS_COLORS[o.campus_location] ||
-                                  'bg-slate-100 text-slate-500 border-slate-200'
+                                className={`inline-block text-[9px] font-black uppercase px-2 py-0.5 rounded border ${
+                                  isCash
+                                    ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                    : 'bg-blue-100 text-blue-800 border-blue-300'
                                 }`}
                               >
-                                {CAMPUS_LABELS[o.campus_location] || o.campus_location}
+                                {o.payment_method}
                               </span>
+                              {proof && (
+                                <div className="mt-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => setViewingProofUrl(proof)}
+                                    className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200"
+                                    title="Lihat foto bukti"
+                                  >
+                                    <Camera className="w-2.5 h-2.5 text-emerald-600" />
+                                    <span>Bukti Foto</span>
+                                  </button>
+                                </div>
+                              )}
                             </td>
-                            <td className="px-3 py-3 max-w-[200px] text-slate-600" title={itemsStr}>
-                              <span className="line-clamp-2">{itemsStr}</span>
-                            </td>
-                            <td className="px-3 py-3 font-semibold text-slate-700 whitespace-nowrap">
-                              {o.payment_method}
-                            </td>
-                            <td className="px-3 py-3 font-bold text-slate-900 whitespace-nowrap">
+
+                            <td className="px-3 py-3 align-top text-right font-bold text-slate-900">
                               {formatIDR(o.gross_amount)}
                             </td>
-                            <td className="px-3 py-3 text-rose-500 font-mono whitespace-nowrap">
-                              -{formatIDR(mdrFee)}
+
+                            <td className="px-3 py-3 align-top text-right text-rose-500 font-mono">
+                              {isPaid ? `-${formatIDR(mdrFee)}` : 'Rp 0'}
                             </td>
-                            <td className="px-3 py-3 font-black text-emerald-600 whitespace-nowrap">
-                              {formatIDR(netRev)}
-                            </td>
-                            <td className="px-3 py-3 whitespace-nowrap">
-                              <span className={statusPill(o.order_status)}>
-                                {statusLabel(o.order_status, o.payment_method)}
-                              </span>
+
+                            <td className="px-3 py-3 align-top text-right">
+                              {isPaid ? (
+                                <div>
+                                  <div className="font-black text-emerald-600">
+                                    {formatIDR(netRev)}
+                                  </div>
+                                  <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    Lunas
+                                  </span>
+                                </div>
+                              ) : (
+                                <div>
+                                  <div className="font-bold text-amber-600 italic">
+                                    Pending
+                                  </div>
+                                  <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                    Menunggu Bayar
+                                  </span>
+                                </div>
+                              )}
                             </td>
                           </tr>
                         );
@@ -1797,6 +2055,187 @@ export default function AdminDashboard() {
                     </>
                   )}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Konfirmasi Pembayaran Tunai & Upload Bukti Penerimaan (COD) */}
+        {proofModalOpen && orderForProof && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+            <div className="bg-white rounded-3xl max-w-lg w-full border border-slate-200 shadow-2xl p-6 space-y-4">
+              <div className="flex items-center gap-3 text-emerald-700">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
+                  <Camera className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900">
+                    Konfirmasi Serah Terima &amp; Pelunasan COD
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Wajib foto bukti pembeli menerima makanan dan menyerahkan uang tunai
+                  </p>
+                </div>
+              </div>
+
+              {/* Ringkasan Pesanan */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Kode &amp; Pemesan:</span>
+                  <span className="font-bold text-slate-900">{orderForProof.order_code} - {orderForProof.customer_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Titik Temu:</span>
+                  <span className="font-semibold text-slate-800">
+                    {CAMPUS_LABELS[orderForProof.campus_location] || orderForProof.campus_location} ({orderForProof.location_notes || '-'})
+                  </span>
+                </div>
+                <div className="flex justify-between pt-1 border-t border-slate-200">
+                  <span className="font-bold text-slate-700">Total Uang Tunai Diterima:</span>
+                  <span className="font-black text-sm text-[#0F2547]">{formatIDR(orderForProof.gross_amount)}</span>
+                </div>
+              </div>
+
+              {/* Area Upload Foto Bukti */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                  <span>Foto Bukti Penerimaan Makanan</span>
+                  <span className="text-[10px] text-emerald-600 font-semibold">*Wajib Diunggah</span>
+                </label>
+
+                {proofPreview ? (
+                  <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500/50 bg-slate-100 text-center">
+                    <img
+                      src={proofPreview}
+                      alt="Preview Bukti Penerimaan"
+                      className="w-full h-48 object-cover"
+                    />
+                    <div className="absolute bottom-2 right-2 flex items-center gap-2">
+                      <label className="px-3 py-1.5 rounded-xl bg-black/70 hover:bg-black/90 text-white text-xs font-bold cursor-pointer transition-colors backdrop-blur-xs flex items-center gap-1">
+                        <Camera className="w-3.5 h-3.5" />
+                        <span>Ganti Foto</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handleFileSelectProof}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors bg-slate-50/50 hover:bg-emerald-50/30 text-center">
+                    <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                      <Camera className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">
+                        Klik untuk Ambil Foto dari Kamera atau Pilih File
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Foto makanan yang diterima pembeli sebagai bukti fisik serah terima
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleFileSelectProof}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+
+                {proofError && (
+                  <p className="text-[11px] font-bold text-rose-600 flex items-center gap-1 mt-1">
+                    <span>•</span>
+                    <span>{proofError}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProofModalOpen(false);
+                    setOrderForProof(null);
+                    setProofPreview(null);
+                    setProofError('');
+                  }}
+                  disabled={isUploadingProof}
+                  className="h-9 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitCashProof}
+                  disabled={isUploadingProof || !proofPreview}
+                  className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
+                >
+                  {isUploadingProof ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Mengunggah &amp; Memproses...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Simpan Bukti &amp; Tandai Lunas</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Lightbox Penampil Foto Bukti Serah Terima */}
+        {viewingProofUrl && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in cursor-pointer"
+            onClick={() => setViewingProofUrl(null)}
+          >
+            <div
+              className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl space-y-3 cursor-default p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-2 text-slate-900 font-extrabold text-sm">
+                  <Camera className="w-4 h-4 text-emerald-600" />
+                  <span>Foto Bukti Serah Terima Makanan</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewingProofUrl(null)}
+                  className="p-1 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-200 flex items-center justify-center max-h-[70vh]">
+                <img
+                  src={viewingProofUrl}
+                  alt="Bukti Serah Terima Makanan"
+                  className="w-full h-auto max-h-[70vh] object-contain"
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-1 text-xs">
+                <span className="text-slate-400">Dokumentasi fisik resmi Kedai BGN Bersatoe</span>
+                <a
+                  href={viewingProofUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-[#0F2547] hover:underline"
+                >
+                  <span>Buka Gambar Asli</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
               </div>
             </div>
           </div>

@@ -81,6 +81,7 @@ export interface Order {
   payment_method: PaymentMethod;
   created_at: string;
   updated_at: string;
+  delivery_proof_url?: string | null;
   items?: OrderItem[];
   payments?: Payment[];
 }

@@ -522,6 +522,26 @@ export default function OrderTrackingPage({
             </div>
           </div>
 
+          {/* Bukti Serah Terima Makanan (Khusus Pesanan Lunas / Diterima) */}
+          {(order.delivery_proof_url || (order.payment_method === 'CASH' && payment?.deeplink_url?.startsWith('http'))) && (
+            <div className="bg-white p-4 rounded-3xl border-2 border-emerald-500/40 shadow-sm space-y-2 text-xs">
+              <div className="flex items-center gap-2 text-emerald-800 font-extrabold text-xs">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>Bukti Serah Terima &amp; Pelunasan Makanan</span>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Pesanan telah resmi diserahkan oleh tim kurir Kedai BGN Bersatoe.
+              </p>
+              <div className="rounded-2xl overflow-hidden border border-slate-200 mt-1 bg-slate-50">
+                <img
+                  src={order.delivery_proof_url || payment?.deeplink_url || ''}
+                  alt="Bukti Serah Terima Makanan"
+                  className="w-full h-44 object-cover"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Action Card: Customer Help & WhatsApp Contact */}
           <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-3xl p-4 text-center space-y-2.5 shadow-xs">
             <div className="flex items-center justify-center gap-1.5 text-emerald-800 font-extrabold text-xs">

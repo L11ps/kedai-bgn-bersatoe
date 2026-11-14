@@ -65,7 +65,8 @@ export async function GET(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const { orderId, newStatus } = await req.json();
+    const body = await req.json();
+    const { orderId, newStatus, proofBase64, deliveryProofUrl } = body;
 
     if (!orderId || !newStatus) {
       return NextResponse.json(
@@ -91,7 +92,41 @@ export async function PATCH(req: Request) {
       );
     }
 
-    const order = updateOrderStatusInMemory(orderId, newStatus);
+    let savedProofUrl = deliveryProofUrl || null;
+
+    if (proofBase64 && isSupabaseConfigured && supabaseAdmin) {
+      try {
+        const matches = proofBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        const buffer = matches
+          ? Buffer.from(matches[2], 'base64')
+          : Buffer.from(proofBase64, 'base64');
+        const fileName = `proof-${orderId}-${Date.now()}.jpg`;
+
+        const { error: uploadError } = await supabaseAdmin.storage
+          .from('proofs')
+          .upload(fileName, buffer, {
+            contentType: 'image/jpeg',
+            upsert: true,
+          });
+
+        if (!uploadError) {
+          const { data: publicUrlData } = supabaseAdmin.storage
+            .from('proofs')
+            .getPublicUrl(fileName);
+          savedProofUrl = publicUrlData.publicUrl;
+        } else {
+          console.warn('[Supabase Storage Upload Error]:', uploadError);
+          savedProofUrl = proofBase64;
+        }
+      } catch (uploadErr) {
+        console.warn('[Upload Proof Exception]:', uploadErr);
+        savedProofUrl = proofBase64;
+      }
+    } else if (proofBase64) {
+      savedProofUrl = proofBase64;
+    }
+
+    const order = updateOrderStatusInMemory(orderId, newStatus, savedProofUrl);
     if (!order) {
       return NextResponse.json(
         { success: false, message: 'Order not found' },
@@ -101,10 +136,31 @@ export async function PATCH(req: Request) {
 
     if (isSupabaseConfigured && supabaseAdmin) {
       try {
+        const updatePayload: Record<string, unknown> = {
+          order_status: newStatus,
+          updated_at: new Date().toISOString(),
+        };
+        if (order.queue_number) {
+          updatePayload.queue_number = order.queue_number;
+        }
         await supabaseAdmin
           .from('orders')
-          .update({ order_status: newStatus, updated_at: new Date().toISOString() })
+          .update(updatePayload)
           .eq('id', order.id);
+
+        if (['PAID', 'COOKING', 'READY_FOR_DELIVERY', 'COMPLETED'].includes(newStatus)) {
+          const payPayload: Record<string, unknown> = {
+            payment_status: 'SETTLEMENT',
+            paid_at: new Date().toISOString(),
+          };
+          if (savedProofUrl) {
+            payPayload.deeplink_url = savedProofUrl;
+          }
+          await supabaseAdmin
+            .from('payments')
+            .update(payPayload)
+            .eq('order_id', order.id);
+        }
       } catch (dbErr) {
         console.warn('[Supabase Order Status Update Error]:', dbErr);
       }

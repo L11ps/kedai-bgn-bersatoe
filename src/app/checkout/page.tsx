@@ -189,7 +189,7 @@ export default function CheckoutPage() {
             location_notes: payload.location_notes,
             order_notes: payload.order_notes,
             scheduled_time: payload.scheduled_time,
-            order_status: payload.payment_method === 'CASH' ? 'PENDING' : 'WAITING_PAYMENT',
+            order_status: 'WAITING_PAYMENT',
             items: payload.items.map((it: any) => ({
               product_id: it.product_id,
               quantity: it.quantity,
@@ -200,7 +200,7 @@ export default function CheckoutPage() {
               id: `pay-${data.order_id}`,
               order_id: data.order_id,
               payment_method: data.payment_method,
-              payment_status: data.payment_method === 'CASH' ? 'PENDING' : 'WAITING_PAYMENT',
+              payment_status: 'PENDING',
               gross_amount: data.gross_amount,
               deeplink_url: data.redirect_url,
               expiry_time: data.expiry_time,
