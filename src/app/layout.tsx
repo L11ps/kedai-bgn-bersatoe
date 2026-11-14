@@ -5,7 +5,7 @@ import { CartProvider } from '@/context/CartContext';
 export const metadata: Metadata = {
   title: 'KEDAI BGN BERSATOE - Berasa Gurih & Nikmat | Telkom University Jakarta',
   description:
-    'Sistem pemesanan makanan online resmi KEDAI BGN BERSATOE untuk mahasiswa Universitas Telkom Jakarta. Nikmati Nasi Goreng Spesial Telur, Spaghetti Bolognese Keju, dan Jus Jeruk Segar.',
+    'Sistem pemesanan makanan online resmi KEDAI BGN BERSATOE untuk mahasiswa Universitas Telkom Jakarta. Nikmati Nasi Goreng Hongkong, Spaghetti Bolognese Keju, dan Jus Jeruk Segar.',
   icons: {
     icon: [
       { url: '/images/bgn-logo.png', type: 'image/png' },

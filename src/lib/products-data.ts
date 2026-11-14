@@ -3,11 +3,11 @@ import { Product } from '@/types';
 export const INITIAL_PRODUCTS: Product[] = [
   {
     id: 'prod-001',
-    name: 'Nasi Goreng Spesial Telur',
-    slug: 'nasi-goreng-spesial-telur',
+    name: 'Nasi Goreng Hongkong',
+    slug: 'nasi-goreng-hongkong',
     category: 'Makanan Utama & Camilan',
     price: 15000,
-    description: 'Nasi goreng gurih beraroma wok hei dengan bumbu kecap spesial, sayuran campur, telur ceplok mata sapi, acar timun segar, dan kerupuk renyah.',
+    description: 'Nasi goreng gurih khas Hongkong beraroma wok hei dengan bumbu spesial, sayuran campur, telur ceplok mata sapi, acar timun segar, dan kerupuk renyah.',
     image_url: '/images/nasi_goreng_spesial_telur.jpg',
     is_available: true,
     po_available: true,

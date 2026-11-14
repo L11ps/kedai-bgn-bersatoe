@@ -128,7 +128,7 @@ Kabar gembira buat seluruh mahasiswa & civitas akademika Tel-U Jakarta! KEDAI BG
 Gak ada lagi cerita kelaparan nunggu antrean panjang pas jam jeda kuliah! Semua menu disiapkan higienis, porsi mantap, dan rasa gurih nikmat:
 
 🔥 MENU ANDALAN KEDAI BGN:
-1. Nasi Goreng Spesial Telur: Rp15.000 (Wok hei gurih + telur mata sapi & kerupuk)
+1. Nasi Goreng Hongkong: Rp15.000 (Wok hei gurih oriental + telur mata sapi & kerupuk)
 2. Spaghetti Bolognese Keju: Rp15.000 (Pasta al dente + saus daging & keju cheddar parut)
 3. Jus Jeruk Segar: Rp10.000 (100% perasan jeruk asli murni botol 250ml)
 
@@ -189,7 +189,7 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
 
         // Draw 3 menu items grid placeholders
         const menuItems = [
-          { name: 'Nasi Goreng Spesial', price: 'Rp15.000', note: 'Wok Hei & Telur Mata Sapi' },
+          { name: 'Nasi Goreng Hongkong', price: 'Rp15.000', note: 'Wok Hei & Telur Mata Sapi' },
           { name: 'Spaghetti Bolognese', price: 'Rp15.000', note: 'Pasta Al Dente & Keju' },
           { name: 'Jus Jeruk Segar', price: 'Rp10.000', note: '100% Buah Alami 250ml' },
         ];
@@ -298,7 +298,7 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
 
         ctx.font = '28px sans-serif';
         ctx.fillStyle = '#9EC6E3';
-        ctx.fillText('• Nasi Goreng Spesial Telur (Wok Hei & Telur Mata Sapi)', 540, 500);
+        ctx.fillText('• Nasi Goreng Hongkong (Wok Hei & Telur Mata Sapi)', 540, 500);
         ctx.fillText('• Spaghetti Bolognese Keju (Pasta Daging Gurih & Keju)', 540, 570);
         ctx.fillText('• Jus Jeruk Segar (100% Buah Alami Murni Dingin)', 540, 640);
 
@@ -663,7 +663,7 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                             <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 border border-white/20">
                               <Image
                                 src="/images/nasi_goreng_spesial_telur.jpg"
-                                alt="Nasi Goreng Spesial Telur"
+                                alt="Nasi Goreng Hongkong"
                                 fill
                                 className="object-cover"
                               />
@@ -673,7 +673,7 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                                 Signature Dish
                               </div>
                               <div className="text-xs font-black text-[#FAF8F5] truncate">
-                                Nasi Goreng Spesial Telur
+                                Nasi Goreng Hongkong
                               </div>
                               <div className="text-[11px] text-slate-300 line-clamp-1">
                                 Wok hei gurih + telur mata sapi & kerupuk
@@ -1202,7 +1202,7 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                             </div>
                             <div className="mt-2 text-center">
                               <div className="text-sm font-black text-[#FAF8F5]">
-                                {showcaseIndex === 0 && 'Nasi Goreng Spesial Telur'}
+                                {showcaseIndex === 0 && 'Nasi Goreng Hongkong'}
                                 {showcaseIndex === 1 && 'Spaghetti Bolognese Keju'}
                                 {showcaseIndex === 2 && 'Jus Jeruk Segar'}
                               </div>
@@ -1599,7 +1599,7 @@ Bisa juga Pre-Order untuk besok pagi pukul 07.00 - 17.00 WIB.
                     </div>
                     <div className="mt-2 text-center">
                       <div className="text-sm font-black text-[#FAF8F5]">
-                        {showcaseIndex === 0 && 'Nasi Goreng Spesial Telur'}
+                        {showcaseIndex === 0 && 'Nasi Goreng Hongkong'}
                         {showcaseIndex === 1 && 'Spaghetti Bolognese Keju'}
                         {showcaseIndex === 2 && 'Jus Jeruk Segar'}
                       </div>

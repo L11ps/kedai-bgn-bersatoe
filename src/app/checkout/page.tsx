@@ -74,7 +74,7 @@ export default function CheckoutPage() {
   const [customerWhatsapp, setCustomerWhatsapp] = useState('');
   const [locationNotes, setLocationNotes] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('QRIS');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
 
   // Operational Date & Time Slots
   const [availableDates, setAvailableDates] = useState<DateOption[]>(getFallbackDates);
@@ -477,34 +477,27 @@ export default function CheckoutPage() {
                 </p>
               </div>
 
-              {/* Option 1: QRIS Midtrans */}
-              <label
-                onClick={() => setPaymentMethod('QRIS')}
-                className={`p-3.5 rounded-2xl border flex items-start gap-3 cursor-pointer transition-all ${
-                  paymentMethod === 'QRIS'
-                    ? 'bg-[#0F2547]/5 border-[#0F2547] ring-2 ring-[#D4A843]/40'
-                    : 'bg-white border-slate-200 hover:bg-slate-50'
-                }`}
+              {/* Option 1: QRIS Midtrans (Dalam Maintenance - Tidak Bisa Di Klik) */}
+              <div
+                aria-disabled="true"
+                className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/80 flex items-start gap-3 opacity-60 cursor-not-allowed select-none transition-all"
+                title="Metode pembayaran QRIS sedang dalam maintenance"
               >
-                <div className={`w-4 h-4 rounded-full border-2 mt-0.5 flex items-center justify-center shrink-0 ${
-                  paymentMethod === 'QRIS' ? 'border-[#0F2547] bg-[#0F2547]' : 'border-slate-300'
-                }`}>
-                  {paymentMethod === 'QRIS' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                </div>
+                <div className="w-4 h-4 rounded-full border-2 border-slate-300 mt-0.5 flex items-center justify-center shrink-0 bg-slate-200" />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-xs text-slate-900">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-extrabold text-xs text-slate-500">
                       QRIS / E-Wallet (Midtrans)
                     </span>
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                      Instan
+                    <span className="text-[10px] font-black uppercase text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300 shrink-0">
+                      Dalam Maintenance
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Bayar langsung via GoPay, ShopeePay, BCA, Mandiri, atau Scan QRIS semua bank.
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Layanan pembayaran QRIS sedang dalam proses pemeliharaan. Silakan gunakan metode pembayaran Tunai di Tempat (CASH).
                   </p>
                 </div>
-              </label>
+              </div>
 
               {/* Option 2: CASH (COD) */}
               <label
