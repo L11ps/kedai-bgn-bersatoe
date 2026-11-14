@@ -231,24 +231,35 @@ export default function OrderTrackingPage({
                   </span>
                 </div>
 
-                {/* Direct Midtrans Link Button */}
-                {payment?.deeplink_url && (
-                  <a
-                    href={payment.deeplink_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-[#0F2547] hover:bg-[#163566] text-[#FAF8F5] font-black text-xs border border-[#D4A843]/60 shadow-lg shadow-[#0F2547]/20 transition-all active:scale-98"
-                  >
-                    <span>Bayar Sekarang di Midtrans</span>
-                    <ExternalLink className="w-4 h-4 text-[#D4A843]" />
-                  </a>
-                )}
-
-                {/* Fallback QRIS Code */}
-                {payment?.qr_string && (
+                {/* Embedded Midtrans Payment Frame (QR Langsung di Web) */}
+                {payment?.deeplink_url ? (
+                  <div className="space-y-3 pt-1">
+                    <p className="text-xs text-slate-600 font-semibold">
+                      Silakan scan kode QRIS langsung di bawah ini:
+                    </p>
+                    <div className="relative w-full rounded-2xl border-2 border-slate-200 overflow-hidden shadow-sm bg-slate-50 flex items-center justify-center">
+                      <iframe
+                        src={payment.deeplink_url}
+                        className="w-full border-0"
+                        style={{ height: '580px', minHeight: '520px' }}
+                        title="Midtrans QRIS Payment"
+                        allow="payment"
+                      />
+                    </div>
+                    <a
+                      href={payment.deeplink_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex min-h-[38px] w-full items-center justify-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-300 transition-colors"
+                    >
+                      <span>Buka di Tab Baru jika Tampilan Terpotong</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                    </a>
+                  </div>
+                ) : payment?.qr_string ? (
                   <div className="pt-2">
                     <p className="text-[11px] text-slate-500 mb-2">
-                      Atau scan QRIS di bawah ini dengan m-Banking / e-Wallet apa saja:
+                      Scan QRIS di bawah ini dengan m-Banking / e-Wallet apa saja:
                     </p>
                     <div className="relative w-56 h-56 mx-auto p-2 bg-white rounded-2xl border border-slate-200 shadow-inner flex items-center justify-center">
                       <img
@@ -260,7 +271,7 @@ export default function OrderTrackingPage({
                       />
                     </div>
                   </div>
-                )}
+                ) : null}
 
                 {/* Instant Demo Simulation Button */}
                 <div className="pt-3 border-t border-slate-100">

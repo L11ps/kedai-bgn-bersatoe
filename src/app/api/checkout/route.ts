@@ -145,6 +145,7 @@ export async function POST(req: Request) {
               quantity: it.quantity,
               name: it.name.slice(0, 50),
             })),
+            enabled_payments: ['qris'],
           }),
         });
 
