@@ -124,6 +124,23 @@ export function getAvailableDeliveryDates(count = 7): AvailableDateOption[] {
 }
 
 export function getProducts(): Product[] {
+  if (!global.__BGN_PRODUCTS__) {
+    global.__BGN_PRODUCTS__ = JSON.parse(JSON.stringify(INITIAL_PRODUCTS));
+  } else {
+    for (const initP of INITIAL_PRODUCTS) {
+      const existing = global.__BGN_PRODUCTS__.find((p) => p.id === initP.id);
+      if (existing) {
+        existing.name = initP.name;
+        existing.slug = initP.slug;
+        existing.description = initP.description;
+        existing.price = initP.price;
+        existing.image_url = initP.image_url;
+        existing.category = initP.category;
+      } else {
+        global.__BGN_PRODUCTS__.push(JSON.parse(JSON.stringify(initP)));
+      }
+    }
+  }
   return global.__BGN_PRODUCTS__ || INITIAL_PRODUCTS;
 }
 
