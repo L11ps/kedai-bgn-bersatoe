@@ -60,8 +60,35 @@ export async function POST(req: Request) {
     }
 
     // 2. Fetch Order
-    const order = getOrderByIdOrCode(orderId);
+    let order = getOrderByIdOrCode(orderId);
+    if (!order && isSupabaseConfigured && supabaseAdmin) {
+      try {
+        const { data: dbOrder } = await supabaseAdmin
+          .from('orders')
+          .select('*')
+          .or(`id.eq.${orderId},order_code.eq.${orderId}`)
+          .single();
+        if (dbOrder) {
+          order = dbOrder as any;
+        }
+      } catch (err) {
+        console.warn('Supabase order lookup failed in webhook:', err);
+      }
+    }
+
     if (!order) {
+      // If it is a test ping from Midtrans Dashboard ("Test notification URL" button)
+      if (
+        orderId.toLowerCase().includes('test') ||
+        orderId.toLowerCase().includes('sample') ||
+        orderId.toLowerCase().includes('demo')
+      ) {
+        return NextResponse.json({
+          success: true,
+          message: 'Midtrans webhook test notification received and verified successfully',
+        });
+      }
+
       return NextResponse.json(
         { success: false, message: 'Order not found' },
         { status: 404 }
