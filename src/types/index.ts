@@ -74,6 +74,7 @@ export interface Order {
   fulfillment_type?: 'DELIVERY' | 'PICKUP';
   campus_location: CampusLocation;
   location_notes: string;
+  order_notes?: string;
   scheduled_time: string;
   gross_amount: number;
   order_status: OrderStatus;
@@ -109,6 +110,7 @@ export interface CheckoutPayload {
   order_type: OrderType;
   campus_location: CampusLocation;
   location_notes: string;
+  order_notes?: string;
   scheduled_time: string;
   payment_method: PaymentMethod;
   items: {

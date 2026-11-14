@@ -675,6 +675,11 @@ export default function AdminDashboard() {
                                   {order.location_notes}
                                 </p>
                               )}
+                              {order.order_notes && (
+                                <p className="mt-1 text-[11px] text-amber-800 bg-amber-50 rounded-md px-1.5 py-0.5 border border-amber-200/60 max-w-[200px] leading-snug">
+                                  <strong>Catatan:</strong> {order.order_notes}
+                                </p>
+                              )}
                             </td>
 
                             <td className="px-4 py-3.5 whitespace-nowrap">

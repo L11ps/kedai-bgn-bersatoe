@@ -73,6 +73,7 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState('');
   const [customerWhatsapp, setCustomerWhatsapp] = useState('');
   const [locationNotes, setLocationNotes] = useState('');
+  const [orderNotes, setOrderNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('QRIS');
 
   // Operational Date & Time Slots
@@ -150,6 +151,7 @@ export default function CheckoutPage() {
         order_type: 'PO' as const,
         campus_location: selectedCampus,
         location_notes: locationNotes.trim(),
+        order_notes: orderNotes.trim() || undefined,
         scheduled_time: scheduleString,
         payment_method: paymentMethod,
         items: items.map((it) => ({
@@ -185,6 +187,7 @@ export default function CheckoutPage() {
             customer_whatsapp: payload.customer_whatsapp,
             campus_location: payload.campus_location,
             location_notes: payload.location_notes,
+            order_notes: payload.order_notes,
             scheduled_time: payload.scheduled_time,
             order_status: payload.payment_method === 'CASH' ? 'PENDING' : 'WAITING_PAYMENT',
             items: payload.items.map((it: any) => ({
@@ -368,6 +371,20 @@ export default function CheckoutPage() {
                 value={locationNotes}
                 onChange={(e) => setLocationNotes(e.target.value)}
                 className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-200 text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:border-[#0F2547] focus:ring-2 focus:ring-[#D4A843]/20 transition-all shadow-xs"
+              />
+            </div>
+
+            <div className="space-y-1.5 pt-1">
+              <label htmlFor="order-notes" className="text-xs font-semibold text-slate-700 block">
+                Catatan Khusus Pesanan (Opsional)
+              </label>
+              <textarea
+                id="order-notes"
+                rows={2}
+                placeholder="Contoh: Bumbu dipisah, jangan terlalu pedas, sendok tambahan, dll."
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+                className="w-full p-3 rounded-xl border border-slate-200 text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:border-[#0F2547] focus:ring-2 focus:ring-[#D4A843]/20 transition-all shadow-xs resize-none"
               />
             </div>
           </div>

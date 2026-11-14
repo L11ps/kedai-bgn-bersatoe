@@ -330,24 +330,6 @@ export default function OrderTrackingPage({
                     </div>
                   </div>
                 ) : null}
-
-                {/* Instant Demo Simulation Button */}
-                <div className="pt-3 border-t border-slate-100">
-                  <button
-                    type="button"
-                    disabled={isSimulating}
-                    onClick={handleSimulatePayment}
-                    className="w-full min-h-[42px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/25 active:scale-95 transition-all"
-                  >
-                    <Zap className="w-4 h-4 text-amber-300" />
-                    <span>
-                      {isSimulating ? 'Memverifikasi...' : 'Simulasi Bayar Lunas (Uji Coba)'}
-                    </span>
-                  </button>
-                  <span className="text-[10px] text-slate-400 mt-1 block">
-                    Mode Pengujian: Klik untuk menguji settlement otomatis tanpa transfer.
-                  </span>
-                </div>
               </div>
             </div>
           ) : isExpired ? (
@@ -494,6 +476,14 @@ export default function OrderTrackingPage({
                   <span className="text-slate-400">Titik Temu:</span>
                   <span className="font-bold text-slate-800 text-right max-w-[200px]">
                     {order.location_notes}
+                  </span>
+                </div>
+              )}
+              {order.order_notes && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Catatan Khusus:</span>
+                  <span className="font-bold text-slate-800 text-right max-w-[200px]">
+                    {order.order_notes}
                   </span>
                 </div>
               )}

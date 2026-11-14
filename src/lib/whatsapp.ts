@@ -151,7 +151,7 @@ Pelanggan: ${order.customer_name} (${order.customer_whatsapp})
 Tipe: ${order.fulfillment_type === 'DELIVERY' ? `Delivery (${order.campus_location})` : 'Pick-up'}
 Jadwal: ${order.scheduled_time}
 Total: ${formatIDR(order.gross_amount)}
-Menu: ${itemsList}`;
+Menu: ${itemsList}${order.order_notes ? `\nCatatan: ${order.order_notes}` : ''}`;
 
   const { status } = await sendViaGateway(groupTarget, message);
   global.__BGN_WA_LOGS__?.push({

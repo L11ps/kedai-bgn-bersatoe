@@ -186,6 +186,7 @@ export function createOrderInMemory(params: {
   order_type: OrderType;
   campus_location: CampusLocation;
   location_notes: string;
+  order_notes?: string;
   scheduled_time: string;
   payment_method: PaymentMethod;
   items: CartItem[];
@@ -216,6 +217,7 @@ export function createOrderInMemory(params: {
     order_type: params.order_type,
     campus_location: params.campus_location,
     location_notes: params.location_notes,
+    order_notes: params.order_notes,
     scheduled_time: params.scheduled_time,
     gross_amount: params.gross_amount,
     // Cash orders are registered directly as PAID/CONFIRMED or waiting cash delivery

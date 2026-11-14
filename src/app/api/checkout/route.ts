@@ -145,7 +145,6 @@ export async function POST(req: Request) {
               quantity: it.quantity,
               name: it.name.slice(0, 50),
             })),
-            enabled_payments: ['qris'],
           }),
         });
 
@@ -168,6 +167,7 @@ export async function POST(req: Request) {
       order_type: 'PO',
       campus_location: body.campus_location,
       location_notes: body.location_notes.trim(),
+      order_notes: body.order_notes?.trim() || undefined,
       scheduled_time: body.scheduled_time,
       payment_method: paymentMethod,
       items: validatedCartItems,
