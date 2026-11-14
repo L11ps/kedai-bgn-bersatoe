@@ -205,7 +205,29 @@ export default function AdminDashboard() {
     try {
       const res = await fetch('/api/orders');
       const data = await res.json();
-      if (data.success && Array.isArray(data.orders)) setOrders(data.orders);
+      let serverOrders: Order[] = [];
+      if (data.success && Array.isArray(data.orders)) {
+        serverOrders = data.orders;
+      }
+
+      // Merge with localStorage cached orders for client resiliency
+      if (typeof window !== 'undefined') {
+        try {
+          const localCached: Order[] = JSON.parse(
+            localStorage.getItem('bgn_recent_orders') || '[]'
+          );
+          const map = new Map<string, Order>();
+          serverOrders.forEach((o) => map.set(o.id, o));
+          localCached.forEach((o) => {
+            if (!map.has(o.id)) map.set(o.id, o);
+          });
+          setOrders(Array.from(map.values()));
+        } catch {
+          setOrders(serverOrders);
+        }
+      } else {
+        setOrders(serverOrders);
+      }
     } catch {
       /* silent */
     } finally {

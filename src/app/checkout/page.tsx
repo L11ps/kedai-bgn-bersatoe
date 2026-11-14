@@ -172,9 +172,56 @@ export default function CheckoutPage() {
         throw new Error(data.message || 'Gagal memproses pesanan.');
       }
 
+      // Cache order to localStorage for instant client-side resiliency across serverless instances
+      if (typeof window !== 'undefined') {
+        try {
+          const cachedOrder = {
+            ...(data.order || {}),
+            id: data.order_id,
+            order_code: data.order_code,
+            queue_number: data.queue_number,
+            gross_amount: data.gross_amount,
+            customer_name: payload.customer_name,
+            customer_whatsapp: payload.customer_whatsapp,
+            campus_location: payload.campus_location,
+            location_notes: payload.location_notes,
+            scheduled_time: payload.scheduled_time,
+            order_status: payload.payment_method === 'CASH' ? 'PENDING' : 'WAITING_PAYMENT',
+            items: payload.items.map((it: any) => ({
+              product_id: it.product_id,
+              quantity: it.quantity,
+              product_name: items.find((ci) => ci.product_id === it.product_id)?.name || 'Menu',
+              unit_price: items.find((ci) => ci.product_id === it.product_id)?.price || 0,
+            })),
+            payment: data.payment || {
+              id: `pay-${data.order_id}`,
+              order_id: data.order_id,
+              payment_method: data.payment_method,
+              payment_status: data.payment_method === 'CASH' ? 'PENDING' : 'WAITING_PAYMENT',
+              gross_amount: data.gross_amount,
+              deeplink_url: data.redirect_url,
+              expiry_time: data.expiry_time,
+              snap_token: data.snap_token,
+            },
+          };
+
+          localStorage.setItem(`bgn_order_${data.order_id}`, JSON.stringify(cachedOrder));
+          if (data.order_code) {
+            localStorage.setItem(`bgn_order_${data.order_code}`, JSON.stringify(cachedOrder));
+          }
+
+          // Also save to recent orders list for dashboard or re-tracking
+          const recents = JSON.parse(localStorage.getItem('bgn_recent_orders') || '[]');
+          recents.unshift(cachedOrder);
+          localStorage.setItem('bgn_recent_orders', JSON.stringify(recents.slice(0, 50)));
+        } catch (storageErr) {
+          console.warn('LocalStorage caching warning:', storageErr);
+        }
+      }
+
       clearCart();
 
-      // If QRIS and has redirect_url, we can either redirect to Midtrans or go to order tracking page
+      // Navigate to order tracking page
       router.push(`/order/${data.order_id}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

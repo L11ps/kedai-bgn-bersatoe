@@ -42,8 +42,31 @@ export default function OrderTrackingPage({
   const resolvedParams = use(params);
   const orderId = resolvedParams.id;
 
-  const [order, setOrder] = useState<Order | null>(null);
-  const [payment, setPayment] = useState<Payment | null>(null);
+  const [order, setOrder] = useState<Order | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem(`bgn_order_${orderId}`);
+        if (cached) return JSON.parse(cached);
+      } catch {
+        /* silent */
+      }
+    }
+    return null;
+  });
+  const [payment, setPayment] = useState<Payment | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem(`bgn_order_${orderId}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed.payment) return parsed.payment;
+        }
+      } catch {
+        /* silent */
+      }
+    }
+    return null;
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState<number>(15 * 60);
   const [isSimulating, setIsSimulating] = useState(false);
@@ -61,9 +84,44 @@ export default function OrderTrackingPage({
         } else if (data.order.payments?.[0]) {
           setPayment(data.order.payments[0]);
         }
+      } else {
+        // Fallback to local storage if serverless instance has not synchronized
+        if (typeof window !== 'undefined') {
+          const cached = localStorage.getItem(`bgn_order_${orderId}`);
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached);
+              setOrder((prev) => prev || parsed);
+              if (parsed.payment) {
+                setPayment((prev) => prev || parsed.payment);
+              }
+
+              // Send rehydration ping to server
+              fetch(`/api/orders/${orderId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order: parsed, payment: parsed.payment }),
+              }).catch(() => {});
+            } catch {
+              /* silent */
+            }
+          }
+        }
       }
     } catch (err) {
       console.error('Fetch order error:', err);
+      if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem(`bgn_order_${orderId}`);
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            setOrder((prev) => prev || parsed);
+            if (parsed.payment) setPayment((prev) => prev || parsed.payment);
+          } catch {
+            /* silent */
+          }
+        }
+      }
     } finally {
       setIsLoading(false);
     }

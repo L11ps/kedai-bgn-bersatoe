@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getOrderByIdOrCode, getPaymentByOrderId } from '@/lib/order-store';
+import {
+  getOrderByIdOrCode,
+  getPaymentByOrderId,
+  upsertOrderInMemory,
+} from '@/lib/order-store';
 import { isSupabaseConfigured, supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(
@@ -38,7 +42,7 @@ export async function GET(
       );
     }
 
-    const payment = getPaymentByOrderId(order.id);
+    const payment = getPaymentByOrderId(order.id) || order.payments?.[0];
 
     return NextResponse.json({
       success: true,
@@ -47,6 +51,32 @@ export async function GET(
         payment,
       },
     });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json(
+      { success: false, message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const body = await req.json();
+
+    if (body.order) {
+      upsertOrderInMemory(body.order, body.payment);
+      return NextResponse.json({ success: true, message: 'Order synchronized' });
+    }
+
+    return NextResponse.json(
+      { success: false, message: 'Invalid payload' },
+      { status: 400 }
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(

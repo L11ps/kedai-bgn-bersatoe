@@ -239,6 +239,8 @@ export async function POST(req: Request) {
       redirect_url: redirectUrl,
       snap_token: snapToken,
       expiry_time: expiryIso,
+      order,
+      payment,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

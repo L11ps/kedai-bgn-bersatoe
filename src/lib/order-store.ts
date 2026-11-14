@@ -301,6 +301,37 @@ export function settlePaymentInMemory(orderId: string, gatewayRef?: string) {
   };
 }
 
+// Rehydrate or sync an order into memory (crucial for cross-lambda consistency)
+export function upsertOrderInMemory(order: Order, payment?: Payment | null) {
+  if (!global.__BGN_ORDERS__) global.__BGN_ORDERS__ = [];
+  if (!global.__BGN_PAYMENTS__) global.__BGN_PAYMENTS__ = [];
+
+  const existingIdx = global.__BGN_ORDERS__.findIndex(
+    (o) => o.id === order.id || o.order_code === order.order_code
+  );
+
+  if (existingIdx !== -1) {
+    global.__BGN_ORDERS__[existingIdx] = {
+      ...global.__BGN_ORDERS__[existingIdx],
+      ...order,
+    };
+  } else {
+    global.__BGN_ORDERS__.unshift(order);
+  }
+
+  if (payment) {
+    const payIdx = global.__BGN_PAYMENTS__.findIndex((p) => p.order_id === order.id);
+    if (payIdx !== -1) {
+      global.__BGN_PAYMENTS__[payIdx] = {
+        ...global.__BGN_PAYMENTS__[payIdx],
+        ...payment,
+      };
+    } else {
+      global.__BGN_PAYMENTS__.unshift(payment);
+    }
+  }
+}
+
 // Expire payment (EXPIRED)
 export function expirePaymentInMemory(orderId: string) {
   const order = global.__BGN_ORDERS__?.find((o) => o.id === orderId || o.order_code === orderId);
