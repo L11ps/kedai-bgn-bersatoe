@@ -25,6 +25,7 @@ import {
   ChefHat,
   FileText,
   Copy,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { Order, OrderStatus, Product, CampusLocation, OperationalSettings } from '@/types';
 import { formatIDR, formatWIB, formatTo62Phone } from '@/lib/formatters';
@@ -206,6 +207,14 @@ export default function AdminDashboard() {
   const [settingsSavedMessage, setSettingsSavedMessage] = useState('');
   const [selectedRecapDate, setSelectedRecapDate] = useState<string>('ALL');
   const [recapCopied, setRecapCopied] = useState(false);
+
+  // Delete modal & admin authorization state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [isBulkDelete, setIsBulkDelete] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -440,6 +449,250 @@ export default function AdminDashboard() {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportExcelFormatted = () => {
+    const todayStr = new Date().toLocaleDateString('id-ID', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    const totalCashGross = paidOrders
+      .filter((o) => o.payment_method === 'CASH')
+      .reduce((acc, o) => acc + (o.gross_amount || 0), 0);
+    const totalQrisGross = paidOrders
+      .filter((o) => o.payment_method !== 'CASH')
+      .reduce((acc, o) => acc + (o.gross_amount || 0), 0);
+
+    const rowsHtml = paidOrders
+      .map((o, idx) => {
+        const isCash = o.payment_method === 'CASH';
+        const mdrFee = isCash
+          ? 0
+          : o.payments?.[0]?.mdr_fee_amount ?? Math.round((o.gross_amount || 0) * 0.007);
+        const netRev = (o.gross_amount || 0) - mdrFee;
+        const items = (o.items || [])
+          .map((it) => `${it.quantity}x ${it.product_name}`)
+          .join(', ');
+        const campus = CAMPUS_LABELS[o.campus_location] || o.campus_location;
+        const notes = [o.location_notes, o.order_notes].filter(Boolean).join(' | ');
+        const rowBg = idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC';
+
+        return `
+          <tr style="background-color: ${rowBg};">
+            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: center;">${idx + 1}</td>
+            <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; color: #0F2547;">${o.order_code}</td>
+            <td style="border: 1px solid #CBD5E1; padding: 8px;">${formatWIB(o.created_at)}</td>
+            <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold;">${o.customer_name}</td>
+            <td style="border: 1px solid #CBD5E1; padding: 8px; mso-number-format:'\\@';">${o.customer_whatsapp}</td>
+            <td style="border: 1px solid #CBD5E1; padding: 8px;">${campus}</td>
+            <td style="border: 1px solid #CBD5E1; padding: 8px;">${notes || '-'}</td>
+            <td style="border: 1px solid #CBD5E1; padding: 8px;">${items}</td>
+            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: center; font-weight: bold;">${o.payment_method}</td>
+            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; mso-number-format:'#,##0';">${o.gross_amount || 0}</td>
+            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; color: #DC2626; mso-number-format:'#,##0';">${mdrFee}</td>
+            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold; color: #059669; mso-number-format:'#,##0';">${netRev}</td>
+            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: center;">${statusLabel(o.order_status, o.payment_method)}</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    const excelTemplate = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>Laporan Keuangan</x:Name>
+                <x:WorksheetOptions>
+                  <x:DisplayGridlines/>
+                </x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+        <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8">
+        <style>
+          body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #1E293B; }
+          table { border-collapse: collapse; width: 100%; }
+          th { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; }
+          td { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <tr>
+            <td colspan="13" style="background-color: #0F2547; color: #FAF8F5; font-size: 16pt; font-weight: bold; text-align: center; padding: 16px; border: 1px solid #0F2547;">
+              KEDAI BGN BERSATOE - REKAP LAPORAN KEUANGAN &amp; TRANSAKSI
+            </td>
+          </tr>
+          <tr>
+            <td colspan="13" style="background-color: #1E3A5F; color: #D4A843; font-size: 10pt; font-weight: bold; text-align: center; padding: 6px; border: 1px solid #1E3A5F;">
+              Waktu Ekspor: ${todayStr} | Tel-U Kampus Halimun &amp; Minangkabau
+            </td>
+          </tr>
+          <tr><td colspan="13" style="height: 12px;"></td></tr>
+        </table>
+
+        <table style="border: 2px solid #0F2547; margin-bottom: 16px;">
+          <tr style="background-color: #F1F5F9;">
+            <th colspan="3" style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-size: 11pt; color: #475569;">Total Omzet Kotor (Gross)</th>
+            <th colspan="3" style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-size: 11pt; color: #DC2626;">Total Potongan MDR QRIS (0.7%)</th>
+            <th colspan="4" style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-size: 11pt; color: #059669;">Pendapatan Bersih (Net Revenue)</th>
+            <th colspan="3" style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-size: 11pt; color: #0F2547;">Total Transaksi Lunas</th>
+          </tr>
+          <tr style="background-color: #FFFFFF;">
+            <td colspan="3" style="border: 1px solid #CBD5E1; padding: 12px; font-size: 14pt; font-weight: bold; color: #0F2547; mso-number-format:'#,##0';">${totalGross}</td>
+            <td colspan="3" style="border: 1px solid #CBD5E1; padding: 12px; font-size: 14pt; font-weight: bold; color: #DC2626; mso-number-format:'#,##0';">-${totalMdr}</td>
+            <td colspan="4" style="border: 1px solid #CBD5E1; padding: 12px; font-size: 14pt; font-weight: bold; color: #059669; mso-number-format:'#,##0';">${totalNet}</td>
+            <td colspan="3" style="border: 1px solid #CBD5E1; padding: 12px; font-size: 14pt; font-weight: bold; color: #0F2547;">${paidOrders.length} Pesanan</td>
+          </tr>
+          <tr style="background-color: #F8FAFC;">
+            <td colspan="3" style="border: 1px solid #CBD5E1; padding: 6px; font-size: 9pt; color: #64748B;">QRIS: ${formatIDR(totalQrisGross)} | Cash: ${formatIDR(totalCashGross)}</td>
+            <td colspan="3" style="border: 1px solid #CBD5E1; padding: 6px; font-size: 9pt; color: #64748B;">MDR 0% untuk Tunai Cash</td>
+            <td colspan="4" style="border: 1px solid #CBD5E1; padding: 6px; font-size: 9pt; color: #64748B;">Hasil Bersih Masuk Kas</td>
+            <td colspan="3" style="border: 1px solid #CBD5E1; padding: 6px; font-size: 9pt; color: #64748B;">Status Lunas / Selesai</td>
+          </tr>
+          <tr><td colspan="13" style="height: 16px;"></td></tr>
+        </table>
+
+        <table style="border: 1px solid #94A3B8;">
+          <thead>
+            <tr style="background-color: #0F2547; color: #FAF8F5;">
+              <th style="border: 1px solid #475569; padding: 10px; font-size: 10pt; text-align: center;">No</th>
+              <th style="border: 1px solid #475569; padding: 10px; font-size: 10pt; text-align: left;">ID Pesanan</th>
+              <th style="border: 1px solid #475569; padding: 10px; font-size: 10pt; text-align: left;">Waktu WIB</th>
+              <th style="border: 1px solid #475569; padding: 10px; font-size: 10pt; text-align: left;">Nama Pembeli</th>
+              <th style="border: 1px solid #475569; padding: 10px; font-size: 10pt; text-align: left;">WhatsApp</th>
+              <th style="border: 1px solid #475569; padding: 10px; font-size: 10pt; text-align: left;">Kampus</th>
+              <th style="border: 1px solid #475569; padding: 10px; font-size: 10pt; text-align: left;">Titik Temu &amp; Catatan</th>
+              <th style="border: 1px solid #475569; padding: 10px; font-size: 10pt; text-align: left;">Rincian Menu</th>
+              <th style="border: 1px solid #475569; padding: 10px; font-size: 10pt; text-align: center;">Metode</th>
+              <th style="border: 1px solid #475569; padding: 10px; font-size: 10pt; text-align: right;">Gross (Rp)</th>
+              <th style="border: 1px solid #475569; padding: 10px; font-size: 10pt; text-align: right;">MDR QRIS (Rp)</th>
+              <th style="border: 1px solid #475569; padding: 10px; font-size: 10pt; text-align: right;">Net Bersih (Rp)</th>
+              <th style="border: 1px solid #475569; padding: 10px; font-size: 10pt; text-align: center;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="13" style="text-align: center; padding: 20px;">Belum ada transaksi lunas.</td></tr>'}
+          </tbody>
+          <tfoot>
+            <tr style="background-color: #E2E8F0; font-weight: bold;">
+              <td colspan="9" style="border: 1px solid #94A3B8; padding: 10px; text-align: right; font-size: 11pt; color: #0F2547;">
+                TOTAL KESELURUHAN:
+              </td>
+              <td style="border: 1px solid #94A3B8; padding: 10px; text-align: right; font-size: 11pt; color: #0F2547; mso-number-format:'#,##0';">
+                ${totalGross}
+              </td>
+              <td style="border: 1px solid #94A3B8; padding: 10px; text-align: right; font-size: 11pt; color: #DC2626; mso-number-format:'#,##0';">
+                -${totalMdr}
+              </td>
+              <td style="border: 1px solid #94A3B8; padding: 10px; text-align: right; font-size: 11pt; color: #059669; mso-number-format:'#,##0';">
+                ${totalNet}
+              </td>
+              <td style="border: 1px solid #94A3B8; padding: 10px; text-align: center; font-size: 10pt; color: #0F2547;">
+                ${paidOrders.length} LUNAS
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <table style="margin-top: 20px;">
+          <tr>
+            <td colspan="13" style="font-size: 9pt; color: #94A3B8; text-align: right; font-style: italic;">
+              Laporan resmi Kedai BGN Bersatoe Tel-U. Digenerate otomatis oleh Sistem Operasional.
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([excelTemplate], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rekap-keuangan-bgn-${new Date().toISOString().slice(0, 10)}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDeleteOrder = async () => {
+    if (deletePassword !== 'bgnsukses777') {
+      setDeleteError('Password admin salah! Masukkan: bgnsukses777');
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError('');
+
+    try {
+      if (isBulkDelete) {
+        // Bulk delete all orders
+        const res = await fetch('/api/orders', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: deletePassword }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          setDeleteError(data.message || 'Gagal membersihkan data testing.');
+          return;
+        }
+
+        setOrders([]);
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.removeItem('bgn_recent_orders');
+          } catch {
+            /* silent */
+          }
+        }
+      } else {
+        // Delete single order
+        if (!orderToDelete) return;
+        const res = await fetch(`/api/orders/${orderToDelete.id}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: deletePassword }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          setDeleteError(data.message || 'Gagal menghapus pesanan.');
+          return;
+        }
+
+        setOrders((prev) => prev.filter((o) => o.id !== orderToDelete.id));
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.removeItem(`bgn_order_${orderToDelete.id}`);
+            const cached: Order[] = JSON.parse(
+              localStorage.getItem('bgn_recent_orders') || '[]'
+            );
+            const nextCached = cached.filter((o) => o.id !== orderToDelete.id);
+            localStorage.setItem('bgn_recent_orders', JSON.stringify(nextCached));
+          } catch {
+            /* silent */
+          }
+        }
+      }
+
+      setDeleteModalOpen(false);
+      setOrderToDelete(null);
+      setIsBulkDelete(false);
+      setDeletePassword('');
+    } catch {
+      setDeleteError('Terjadi kesalahan jaringan saat menghapus pesanan.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // RECAP LOGIC FOR KITCHEN & LOGISTICS
   const validRecapOrders = orders.filter(
     (o) => o.order_status !== 'CANCELLED' && o.order_status !== 'EXPIRED'
@@ -645,11 +898,27 @@ export default function AdminDashboard() {
                   options={STATUS_OPTIONS}
                 />
                 <button
+                  type="button"
                   onClick={fetchOrders}
                   className="h-9 px-3 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>Refresh</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsBulkDelete(true);
+                    setOrderToDelete(null);
+                    setDeletePassword('');
+                    setDeleteError('');
+                    setDeleteModalOpen(true);
+                  }}
+                  className="h-9 px-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
+                  title="Bersihkan Semua Data Pesanan Testing"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Bersihkan Data Testing</span>
                 </button>
                 {hasFilter && (
                   <button
@@ -810,27 +1079,43 @@ export default function AdminDashboard() {
                             </td>
 
                             <td className="px-4 py-3.5 whitespace-nowrap">
-                              <div className="space-y-2">
-                                <span className={statusPill(order.order_status)}>
-                                  {statusLabel(order.order_status, order.payment_method)}
-                                </span>
-                                {next && (
-                                  <div>
-                                    <button
-                                      type="button"
-                                      disabled={isUpdating}
-                                      onClick={() => handleUpdateStatus(order.id, next.value)}
-                                      className="h-7 px-2.5 rounded-lg bg-[#0F2547] hover:bg-[#163566] text-[#FAF8F5] border border-[#D4A843]/50 disabled:opacity-50 text-[10px] font-bold flex items-center gap-1 transition-colors"
-                                    >
-                                      {isUpdating ? (
-                                        <RefreshCw className="w-2.5 h-2.5 animate-spin" />
-                                      ) : (
-                                        <Check className="w-2.5 h-2.5 text-[#D4A843]" />
-                                      )}
-                                      {next.label}
-                                    </button>
-                                  </div>
-                                )}
+                              <div className="flex items-start gap-2">
+                                <div className="space-y-2 flex-1">
+                                  <span className={statusPill(order.order_status)}>
+                                    {statusLabel(order.order_status, order.payment_method)}
+                                  </span>
+                                  {next && (
+                                    <div>
+                                      <button
+                                        type="button"
+                                        disabled={isUpdating}
+                                        onClick={() => handleUpdateStatus(order.id, next.value)}
+                                        className="h-7 px-2.5 rounded-lg bg-[#0F2547] hover:bg-[#163566] text-[#FAF8F5] border border-[#D4A843]/50 disabled:opacity-50 text-[10px] font-bold flex items-center gap-1 transition-colors"
+                                      >
+                                        {isUpdating ? (
+                                          <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                                        ) : (
+                                          <Check className="w-2.5 h-2.5 text-[#D4A843]" />
+                                        )}
+                                        {next.label}
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIsBulkDelete(false);
+                                    setOrderToDelete(order);
+                                    setDeletePassword('');
+                                    setDeleteError('');
+                                    setDeleteModalOpen(true);
+                                  }}
+                                  className="p-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors shadow-xs mt-0.5 shrink-0"
+                                  title="Hapus Pesanan Testing (Perlu Password Admin)"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
                               </div>
                             </td>
                           </tr>
@@ -1300,16 +1585,33 @@ export default function AdminDashboard() {
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="font-bold text-sm text-slate-900">Riwayat Transaksi Lunas</h3>
-                <button
-                  type="button"
-                  onClick={handleExportCSV}
-                  className="h-8 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition-colors shadow-xs"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Export CSV</span>
-                </button>
+              <div className="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900">Riwayat Transaksi Lunas</h3>
+                  <p className="text-[11px] text-slate-400">
+                    Rekap transaksi pesanan yang telah lunas dan terverifikasi
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExportExcelFormatted}
+                    className="h-8 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs active:scale-95"
+                    title="Export Laporan Format Excel (.xls) dengan Tabel Rapi & Ringkasan"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>Export Excel (.xls)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportCSV}
+                    className="h-8 px-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-600 flex items-center gap-1.5 transition-colors shadow-xs"
+                    title="Export format CSV data mentah"
+                  >
+                    <Download className="w-3.5 h-3.5 text-slate-400" />
+                    <span>CSV</span>
+                  </button>
+                </div>
               </div>
               {paidOrders.length === 0 ? (
                 <div className="py-16 text-center">
@@ -1400,6 +1702,102 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Modal Konfirmasi Hapus Data Testing */}
+        {deleteModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95">
+              <div className="flex items-center gap-3 text-rose-600">
+                <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900">
+                    {isBulkDelete ? 'Bersihkan Semua Data Testing' : 'Hapus Pesanan Testing'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Verifikasi otorisasi admin diperlukan
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-rose-50/70 border border-rose-200/80 text-xs text-rose-800 space-y-1">
+                <p className="font-bold">Perhatian: Tindakan ini permanen!</p>
+                {isBulkDelete ? (
+                  <p className="text-rose-700 leading-relaxed">
+                    Semua data pesanan testing yang ada saat ini ({orders.length} pesanan) akan dihapus secara permanen dari database Supabase dan sistem antrean.
+                  </p>
+                ) : (
+                  <p className="text-rose-700 leading-relaxed">
+                    Pesanan <span className="font-mono font-black">{orderToDelete?.order_code}</span> atas nama <span className="font-bold">{orderToDelete?.customer_name}</span> ({orderToDelete ? formatIDR(orderToDelete.gross_amount) : ''}) akan dihapus permanen.
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                  <span>Password Admin</span>
+                  <span className="text-[10px] text-slate-400">Ketik: bgnsukses777</span>
+                </label>
+                <input
+                  type="password"
+                  placeholder="Masukkan password admin (bgnsukses777)"
+                  value={deletePassword}
+                  onChange={(e) => {
+                    setDeletePassword(e.target.value);
+                    if (deleteError) setDeleteError('');
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleDeleteOrder();
+                  }}
+                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-200/50"
+                  autoFocus
+                />
+                {deleteError && (
+                  <p className="text-[11px] font-bold text-rose-600 flex items-center gap-1 mt-1">
+                    <span>•</span>
+                    <span>{deleteError}</span>
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeleteModalOpen(false);
+                    setOrderToDelete(null);
+                    setIsBulkDelete(false);
+                    setDeletePassword('');
+                    setDeleteError('');
+                  }}
+                  disabled={isDeleting}
+                  className="h-9 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteOrder}
+                  disabled={isDeleting || !deletePassword}
+                  className="h-9 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
+                >
+                  {isDeleting ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Menghapus...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>{isBulkDelete ? 'Hapus Semua' : 'Hapus Pesanan'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}

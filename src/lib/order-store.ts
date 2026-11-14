@@ -361,3 +361,24 @@ export function updateOrderStatusInMemory(orderId: string, newStatus: OrderStatu
   order.updated_at = new Date().toISOString();
   return order;
 }
+
+// Delete single order in memory
+export function deleteOrderInMemory(orderId: string): boolean {
+  if (!global.__BGN_ORDERS__) return false;
+  const initialLen = global.__BGN_ORDERS__.length;
+  global.__BGN_ORDERS__ = global.__BGN_ORDERS__.filter(
+    (o) => o.id !== orderId && o.order_code !== orderId
+  );
+  if (global.__BGN_PAYMENTS__) {
+    global.__BGN_PAYMENTS__ = global.__BGN_PAYMENTS__.filter(
+      (p) => p.order_id !== orderId
+    );
+  }
+  return global.__BGN_ORDERS__.length < initialLen;
+}
+
+// Clear all orders in memory (e.g. testing cleanup)
+export function clearAllOrdersInMemory(): void {
+  global.__BGN_ORDERS__ = [];
+  global.__BGN_PAYMENTS__ = [];
+}

@@ -532,15 +532,15 @@ export default function OrderTrackingPage({
               Tim Kedai BGN Bersatoe siap melayani pertanyaan seputar pesanan, titik temu kurir, atau konfirmasi pembayaran Anda.
             </p>
             <a
-              href={`https://wa.me/6281935281705?text=${encodeURIComponent(
-                `Halo Admin Kedai BGN Bersatoe! Saya ingin menanyakan status pesanan saya dengan Kode: ${order.order_code} (Antrean: ${order.queue_number || '-'}) atas nama ${order.customer_name}.`
+              href={`https://wa.me/6285716160860?text=${encodeURIComponent(
+                `Halo Kak Alif (Admin Kedai BGN Bersatoe)! Saya ingin menanyakan status pesanan saya:\n• Kode Pesanan: ${order.order_code}\n• Nomor Antrean: ${order.queue_number || '-'}\n• Nama: ${order.customer_name}\n• Kampus: ${order.campus_location}\n• Jadwal Tiba: ${order.scheduled_time}\n• Total: ${formatIDR(order.gross_amount)}\n\nMohon info update pesanannya yaa kak. Terima kasih!`
               )}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition-all active:scale-98"
             >
               <MessageCircle className="w-4 h-4" />
-              <span>Chat Admin Kedai via WhatsApp</span>
+              <span>Hubungi Kak Alif (+62 857-1616-0860)</span>
             </a>
           </div>
         </div>

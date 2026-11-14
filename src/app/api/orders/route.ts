@@ -3,6 +3,7 @@ import {
   getAllOrders,
   updateOrderStatusInMemory,
   getPaymentByOrderId,
+  clearAllOrdersInMemory,
 } from '@/lib/order-store';
 import { isSupabaseConfigured, supabaseAdmin } from '@/lib/supabase';
 import { updateGoogleSheetOrderStatus } from '@/lib/google-sheets';
@@ -129,6 +130,40 @@ export async function PATCH(req: Request) {
       success: true,
       message: `Order status updated to ${newStatus}`,
       order,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ success: false, message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const body = await req.json().catch(() => ({}));
+    const password = body.password || req.headers.get('x-admin-password');
+
+    if (password !== 'bgnsukses777') {
+      return NextResponse.json(
+        { success: false, message: 'Password admin tidak valid untuk menghapus pesanan.' },
+        { status: 403 }
+      );
+    }
+
+    clearAllOrdersInMemory();
+
+    if (isSupabaseConfigured && supabaseAdmin) {
+      try {
+        await supabaseAdmin.from('payments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabaseAdmin.from('order_items').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabaseAdmin.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      } catch (dbErr) {
+        console.warn('[Supabase Bulk Delete Error]:', dbErr);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Seluruh data pesanan uji coba berhasil dibersihkan.',
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
