@@ -9,7 +9,7 @@ import CartDrawer from '@/components/CartDrawer';
 import { Product, CampusLocation } from '@/types';
 import { INITIAL_PRODUCTS } from '@/lib/products-data';
 import { useCart } from '@/context/CartContext';
-import { MapPin, Clock, CalendarCheck } from 'lucide-react';
+import { MapPin, Clock, CalendarCheck, MessageCircle, ShoppingBag, Truck } from 'lucide-react';
 
 const CATEGORIES = [
   'Semua',
@@ -126,6 +126,36 @@ export default function HomePage() {
               })}
             </div>
           </div>
+
+          {/* 3 Simple PO Steps */}
+          <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-2">
+              Cara Mudah Pesan (PO H-1):
+            </span>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="space-y-1">
+                <div className="w-6 h-6 mx-auto rounded-full bg-[#0F2547] text-[#D4A843] flex items-center justify-center text-[11px] font-black">
+                  1
+                </div>
+                <span className="text-[10px] font-bold text-slate-700 block leading-tight">Pilih Menu</span>
+                <span className="text-[9px] text-slate-400 block">Min H-1</span>
+              </div>
+              <div className="space-y-1">
+                <div className="w-6 h-6 mx-auto rounded-full bg-[#0F2547] text-[#D4A843] flex items-center justify-center text-[11px] font-black">
+                  2
+                </div>
+                <span className="text-[10px] font-bold text-slate-700 block leading-tight">Titik Kumpul</span>
+                <span className="text-[9px] text-slate-400 block">Halimun / Minang</span>
+              </div>
+              <div className="space-y-1">
+                <div className="w-6 h-6 mx-auto rounded-full bg-[#0F2547] text-[#D4A843] flex items-center justify-center text-[11px] font-black">
+                  3
+                </div>
+                <span className="text-[10px] font-bold text-slate-700 block leading-tight">Kurir Antar</span>
+                <span className="text-[9px] text-slate-400 block">Tepat Waktu</span>
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* Category Navigation Tabs */}
@@ -149,6 +179,20 @@ export default function HomePage() {
 
         {/* Floating Cart Bar */}
         <FloatingCartBar />
+
+        {/* Floating WhatsApp Help Pill */}
+        <aside className="fixed bottom-24 right-4 z-30">
+          <a
+            href="https://wa.me/6281935281705?text=Halo%20Admin%20Kedai%20BGN%20Bersatoe!%20Saya%20ingin%20bertanya%20seputar%20menu%20dan%20pemesanan."
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2.5 rounded-full shadow-lg shadow-emerald-600/30 font-bold text-xs border border-emerald-400/50 transition-all hover:scale-105 active:scale-95"
+            title="Chat Admin Kedai BGN via WhatsApp"
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span className="hidden sm:inline">Tanya Admin</span>
+          </a>
+        </aside>
 
         {/* Cart Drawer Slide-Over */}
         <CartDrawer />

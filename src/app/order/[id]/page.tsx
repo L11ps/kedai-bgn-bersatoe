@@ -15,6 +15,7 @@ import {
   Check,
   Zap,
   Banknote,
+  MessageCircle,
 } from 'lucide-react';
 import { Order, Payment } from '@/types';
 import { formatIDR } from '@/lib/formatters';
@@ -519,6 +520,28 @@ export default function OrderTrackingPage({
               <span>Total Biaya</span>
               <span className="text-sm text-[#0F2547]">{formatIDR(order.gross_amount)}</span>
             </div>
+          </div>
+
+          {/* Action Card: Customer Help & WhatsApp Contact */}
+          <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-3xl p-4 text-center space-y-2.5 shadow-xs">
+            <div className="flex items-center justify-center gap-1.5 text-emerald-800 font-extrabold text-xs">
+              <MessageCircle className="w-4 h-4 text-emerald-600" />
+              <span>Butuh Bantuan atau Ingin Bertanya?</span>
+            </div>
+            <p className="text-[11px] text-emerald-700 leading-relaxed max-w-[320px] mx-auto">
+              Tim Kedai BGN Bersatoe siap melayani pertanyaan seputar pesanan, titik temu kurir, atau konfirmasi pembayaran Anda.
+            </p>
+            <a
+              href={`https://wa.me/6281935281705?text=${encodeURIComponent(
+                `Halo Admin Kedai BGN Bersatoe! Saya ingin menanyakan status pesanan saya dengan Kode: ${order.order_code} (Antrean: ${order.queue_number || '-'}) atas nama ${order.customer_name}.`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition-all active:scale-98"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span>Chat Admin Kedai via WhatsApp</span>
+            </a>
           </div>
         </div>
       </div>

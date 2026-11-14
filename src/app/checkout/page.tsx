@@ -466,6 +466,17 @@ export default function CheckoutPage() {
             </div>
 
             <div className="space-y-2">
+              {/* Payment Method Notice */}
+              <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-200/60 text-[11px] text-blue-900 space-y-1">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <AlertCircle className="w-3.5 h-3.5 text-blue-700 shrink-0" />
+                  <span>Rekomendasi Pembayaran</span>
+                </div>
+                <p className="text-slate-600 leading-relaxed">
+                  Pilih <strong>Tunai di Tempat (CASH)</strong> untuk pesanan langsung diproses tanpa kendala dan bayar uang pas saat kurir tiba di titik kumpul kampus.
+                </p>
+              </div>
+
               {/* Option 1: QRIS Midtrans */}
               <label
                 onClick={() => setPaymentMethod('QRIS')}

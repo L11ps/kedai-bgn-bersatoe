@@ -21,12 +21,16 @@ import {
   Plus,
   Trash2,
   CalendarOff,
+  Printer,
+  ChefHat,
+  FileText,
+  Copy,
 } from 'lucide-react';
 import { Order, OrderStatus, Product, CampusLocation, OperationalSettings } from '@/types';
 import { formatIDR, formatWIB, formatTo62Phone } from '@/lib/formatters';
 import { INITIAL_PRODUCTS } from '@/lib/products-data';
 
-type ActiveTab = 'ORDERS' | 'SCHEDULE' | 'FINANCE';
+type ActiveTab = 'ORDERS' | 'RECAP' | 'SCHEDULE' | 'FINANCE';
 type OrderFilter = {
   campus: 'ALL' | CampusLocation;
   status: 'ALL' | 'WAITING' | 'PROCESSING' | 'DONE';
@@ -200,6 +204,8 @@ export default function AdminDashboard() {
   const [newSlotInput, setNewSlotInput] = useState('');
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsSavedMessage, setSettingsSavedMessage] = useState('');
+  const [selectedRecapDate, setSelectedRecapDate] = useState<string>('ALL');
+  const [recapCopied, setRecapCopied] = useState(false);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -434,6 +440,79 @@ export default function AdminDashboard() {
     URL.revokeObjectURL(url);
   };
 
+  // RECAP LOGIC FOR KITCHEN & LOGISTICS
+  const validRecapOrders = orders.filter(
+    (o) => o.order_status !== 'CANCELLED' && o.order_status !== 'EXPIRED'
+  );
+
+  const recapDates = Array.from(
+    new Set(
+      validRecapOrders
+        .map((o) => (o.scheduled_time || '').split(' pukul ')[0])
+        .filter(Boolean)
+    )
+  );
+
+  const displayedRecapOrders =
+    selectedRecapDate === 'ALL'
+      ? validRecapOrders
+      : validRecapOrders.filter((o) => (o.scheduled_time || '').startsWith(selectedRecapDate));
+
+  const portionCounts: Record<string, number> = {};
+  displayedRecapOrders.forEach((o) => {
+    (o.items || []).forEach((it) => {
+      portionCounts[it.product_name] = (portionCounts[it.product_name] || 0) + it.quantity;
+    });
+  });
+
+  const halimunRecapOrders = displayedRecapOrders.filter(
+    (o) => o.campus_location === 'Kampus B Halimun'
+  );
+  const minangkabauRecapOrders = displayedRecapOrders.filter(
+    (o) => o.campus_location === 'Kampus C Minangkabau'
+  );
+
+  const handleCopyWhatsAppRecap = () => {
+    const dateLabel = selectedRecapDate === 'ALL' ? 'Semua Jadwal' : selectedRecapDate;
+    let text = `📋 *REKAP OPERASIONAL DAPUR & KURIR - KEDAI BGN BERSATOE*\n`;
+    text += `📅 Jadwal Pengantaran: *${dateLabel}*\n`;
+    text += `📦 Total Antrean: *${displayedRecapOrders.length} Pesanan*\n\n`;
+    text += `🍳 *TOTAL PORSI HARUS DIMASAK (DAPUR):*\n`;
+    if (Object.keys(portionCounts).length === 0) {
+      text += `(Belum ada pesanan masuk)\n`;
+    } else {
+      Object.entries(portionCounts).forEach(([name, count]) => {
+        text += `• ${name}: *${count} porsi*\n`;
+      });
+    }
+    text += `\n📍 *KAMPUS B HALIMUN (${halimunRecapOrders.length} antaran):*\n`;
+    if (halimunRecapOrders.length === 0) {
+      text += `- Tidak ada antaran\n`;
+    } else {
+      halimunRecapOrders.forEach((o, i) => {
+        const items = (o.items || []).map((it) => `${it.quantity}x ${it.product_name}`).join(', ');
+        const notes = o.order_notes ? ` [Catatan: ${o.order_notes}]` : '';
+        const payStatus = o.payment_method === 'CASH' ? `Tagih Tunai Rp ${o.gross_amount.toLocaleString('id-ID')}` : 'QRIS Lunas';
+        text += `${i + 1}. [${o.queue_number || o.order_code}] ${o.customer_name} (${o.customer_whatsapp}) | Jam ${o.scheduled_time.split(' pukul ')[1] || o.scheduled_time} | Titik: ${o.location_notes || '-'} | Menu: ${items}${notes} | ${payStatus}\n`;
+      });
+    }
+    text += `\n📍 *KAMPUS C MINANGKABAU (${minangkabauRecapOrders.length} antaran):*\n`;
+    if (minangkabauRecapOrders.length === 0) {
+      text += `- Tidak ada antaran\n`;
+    } else {
+      minangkabauRecapOrders.forEach((o, i) => {
+        const items = (o.items || []).map((it) => `${it.quantity}x ${it.product_name}`).join(', ');
+        const notes = o.order_notes ? ` [Catatan: ${o.order_notes}]` : '';
+        const payStatus = o.payment_method === 'CASH' ? `Tagih Tunai Rp ${o.gross_amount.toLocaleString('id-ID')}` : 'QRIS Lunas';
+        text += `${i + 1}. [${o.queue_number || o.order_code}] ${o.customer_name} (${o.customer_whatsapp}) | Jam ${o.scheduled_time.split(' pukul ')[1] || o.scheduled_time} | Titik: ${o.location_notes || '-'} | Menu: ${items}${notes} | ${payStatus}\n`;
+      });
+    }
+    text += `\nSemangat tim Kedai BGN Bersatoe! Siapkan pesanan tepat waktu & amanah.`;
+    navigator.clipboard.writeText(text);
+    setRecapCopied(true);
+    setTimeout(() => setRecapCopied(false), 2500);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 antialiased">
       {/* Top Header */}
@@ -476,6 +555,7 @@ export default function AdminDashboard() {
             <nav className="flex items-center bg-slate-100 p-1 rounded-xl gap-0.5">
               {[
                 { key: 'ORDERS', label: 'Pesanan Masuk' },
+                { key: 'RECAP', label: 'Rekap Dapur & Kurir' },
                 { key: 'SCHEDULE', label: 'Jadwal & Operasional' },
                 { key: 'FINANCE', label: 'Rekap Keuangan' },
               ].map((tab) => (
@@ -764,7 +844,279 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* TAB 2: JADWAL & OPERASIONAL (REVISI 2 & 3: LIBUR & JAM PENGANTARAN) */}
+        {/* TAB 2: REKAP DAPUR & KURIR LOGISTIK (AGREGAT PORSI & MANIFEST ANTARAN) */}
+        {activeTab === 'RECAP' && (
+          <div className="space-y-6">
+            {/* Action Bar & Date Filter */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <ChefHat className="w-5 h-5 text-[#0F2547]" />
+                <div>
+                  <h3 className="font-extrabold text-sm text-[#0F2547]">
+                    Rekap Operasional Dapur &amp; Kurir
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Agregat porsi masak untuk koki dan manifest rute antaran untuk kurir
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Date Filter Dropdown */}
+                <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200 text-xs">
+                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="text-slate-400 font-medium">Jadwal:</span>
+                  <select
+                    value={selectedRecapDate}
+                    onChange={(e) => setSelectedRecapDate(e.target.value)}
+                    className="bg-transparent font-bold text-slate-800 focus:outline-none cursor-pointer"
+                  >
+                    <option value="ALL">Semua Jadwal ({validRecapOrders.length})</option>
+                    {recapDates.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Copy to WhatsApp Group Button */}
+                <button
+                  type="button"
+                  onClick={handleCopyWhatsAppRecap}
+                  className="h-8 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-xs active:scale-95"
+                >
+                  {recapCopied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Tersalin ke Clipboard!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Salin Rekap WA Grup</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Print Manifest Button */}
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="h-8 px-3 rounded-xl bg-[#0F2547] hover:bg-[#163566] text-[#FAF8F5] border border-[#D4A843]/50 font-bold text-xs flex items-center gap-1.5 transition-colors shadow-xs active:scale-95"
+                >
+                  <Printer className="w-3.5 h-3.5 text-[#D4A843]" />
+                  <span>Cetak Manifest</span>
+                </button>
+              </div>
+            </div>
+
+            {/* SECTION A: KITCHEN PRODUCTION TARGET (BERAPA PORSI HARUS DIMASAK) */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#D4A843]" />
+                  <h4 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">
+                    Total Porsi Masak Tim Dapur
+                  </h4>
+                </div>
+                <span className="text-xs font-bold text-slate-500">
+                  Target: {displayedRecapOrders.length} Antrean Pesanan
+                </span>
+              </div>
+
+              {Object.keys(portionCounts).length === 0 ? (
+                <p className="text-xs text-slate-400 py-3 text-center">
+                  Belum ada pesanan aktif pada jadwal yang dipilih.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {Object.entries(portionCounts).map(([name, count]) => (
+                    <div
+                      key={name}
+                      className="bg-gradient-to-br from-slate-50 to-amber-50/40 p-3.5 rounded-xl border border-slate-200 flex flex-col justify-between"
+                    >
+                      <span className="text-xs font-bold text-slate-700 leading-snug">{name}</span>
+                      <div className="mt-2 flex items-baseline justify-between">
+                        <span className="text-2xl font-black text-[#0F2547]">{count}</span>
+                        <span className="text-[11px] font-bold text-slate-400 uppercase">Porsi / Btl</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* SECTION B: DELIVERY MANIFEST BY CAMPUS */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Kampus B Halimun Column */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
+                <div className="bg-violet-900 text-white p-3.5 px-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-[#D4A843]" />
+                    <span className="font-extrabold text-xs uppercase tracking-wider">
+                      Manifest Kampus B Halimun
+                    </span>
+                  </div>
+                  <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full">
+                    {halimunRecapOrders.length} Antaran
+                  </span>
+                </div>
+
+                <div className="p-4 space-y-3 flex-1 overflow-y-auto max-h-[550px] divide-y divide-slate-100">
+                  {halimunRecapOrders.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-6">
+                      Tidak ada antaran untuk Kampus Halimun pada jadwal ini.
+                    </p>
+                  ) : (
+                    halimunRecapOrders.map((o, idx) => {
+                      const isCash = o.payment_method === 'CASH';
+                      const itemsStr = (o.items || [])
+                        .map((it) => `${it.quantity}x ${it.product_name}`)
+                        .join(', ');
+                      return (
+                        <div key={o.id} className="pt-3 first:pt-0 space-y-1.5 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono font-black text-xs text-[#0F2547]">
+                              #{idx + 1} [{o.queue_number || o.order_code}]
+                            </span>
+                            <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-[#0F2547]" />
+                              {o.scheduled_time.split(' pukul ')[1] || o.scheduled_time}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between font-semibold text-slate-800">
+                            <span>{o.customer_name}</span>
+                            <a
+                              href={`https://wa.me/${formatTo62Phone(o.customer_whatsapp)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-emerald-700 hover:text-emerald-800 font-bold text-[11px] flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200"
+                            >
+                              <span>{o.customer_whatsapp}</span>
+                            </a>
+                          </div>
+
+                          <p className="text-[11px] text-slate-600">
+                            <strong>Titik Temu:</strong> {o.location_notes || '-'}
+                          </p>
+
+                          <p className="text-[11px] text-slate-700 font-medium bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                            <strong>Menu:</strong> {itemsStr}
+                          </p>
+
+                          {o.order_notes && (
+                            <p className="text-[11px] text-amber-800 bg-amber-50 p-1.5 rounded-lg border border-amber-200">
+                              <strong>Catatan:</strong> {o.order_notes}
+                            </p>
+                          )}
+
+                          <div className="flex items-center justify-between pt-1">
+                            <span
+                              className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                                isCash
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                  : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              }`}
+                            >
+                              {isCash
+                                ? `Tagih Tunai: ${formatIDR(o.gross_amount)}`
+                                : `QRIS Lunas (${formatIDR(o.gross_amount)})`}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Kampus C Minangkabau Column */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
+                <div className="bg-sky-900 text-white p-3.5 px-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-[#D4A843]" />
+                    <span className="font-extrabold text-xs uppercase tracking-wider">
+                      Manifest Kampus C Minangkabau
+                    </span>
+                  </div>
+                  <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full">
+                    {minangkabauRecapOrders.length} Antaran
+                  </span>
+                </div>
+
+                <div className="p-4 space-y-3 flex-1 overflow-y-auto max-h-[550px] divide-y divide-slate-100">
+                  {minangkabauRecapOrders.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-6">
+                      Tidak ada antaran untuk Kampus Minangkabau pada jadwal ini.
+                    </p>
+                  ) : (
+                    minangkabauRecapOrders.map((o, idx) => {
+                      const isCash = o.payment_method === 'CASH';
+                      const itemsStr = (o.items || [])
+                        .map((it) => `${it.quantity}x ${it.product_name}`)
+                        .join(', ');
+                      return (
+                        <div key={o.id} className="pt-3 first:pt-0 space-y-1.5 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono font-black text-xs text-[#0F2547]">
+                              #{idx + 1} [{o.queue_number || o.order_code}]
+                            </span>
+                            <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-[#0F2547]" />
+                              {o.scheduled_time.split(' pukul ')[1] || o.scheduled_time}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between font-semibold text-slate-800">
+                            <span>{o.customer_name}</span>
+                            <a
+                              href={`https://wa.me/${formatTo62Phone(o.customer_whatsapp)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-emerald-700 hover:text-emerald-800 font-bold text-[11px] flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200"
+                            >
+                              <span>{o.customer_whatsapp}</span>
+                            </a>
+                          </div>
+
+                          <p className="text-[11px] text-slate-600">
+                            <strong>Titik Temu:</strong> {o.location_notes || '-'}
+                          </p>
+
+                          <p className="text-[11px] text-slate-700 font-medium bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                            <strong>Menu:</strong> {itemsStr}
+                          </p>
+
+                          {o.order_notes && (
+                            <p className="text-[11px] text-amber-800 bg-amber-50 p-1.5 rounded-lg border border-amber-200">
+                              <strong>Catatan:</strong> {o.order_notes}
+                            </p>
+                          )}
+
+                          <div className="flex items-center justify-between pt-1">
+                            <span
+                              className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                                isCash
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                  : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              }`}
+                            >
+                              {isCash
+                                ? `Tagih Tunai: ${formatIDR(o.gross_amount)}`
+                                : `QRIS Lunas (${formatIDR(o.gross_amount)})`}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         {activeTab === 'SCHEDULE' && (
           <div className="space-y-6">
             {settingsSavedMessage && (
