@@ -89,7 +89,7 @@ export function getJakartaDate(): Date {
   return new Date(jakartaStr);
 }
 
-// Generate available delivery dates (minimum H-1, Monday to Friday only, excluding holidays)
+// Generate available delivery dates (minimum H-1, Tuesday, Wednesday, Thursday only, excluding holidays)
 export function getAvailableDeliveryDates(count = 7): AvailableDateOption[] {
   const settings = getOperationalSettings();
   const holidays = settings.holidays || [];
@@ -100,14 +100,14 @@ export function getAvailableDeliveryDates(count = 7): AvailableDateOption[] {
   cursor.setDate(cursor.getDate() + 1);
 
   while (results.length < count) {
-    const dayOfWeek = cursor.getDay(); // 0 = Sunday, 6 = Saturday
+    const dayOfWeek = cursor.getDay(); // 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday
     const year = cursor.getFullYear();
     const month = String(cursor.getMonth() + 1).padStart(2, '0');
     const day = String(cursor.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
 
-    // Available only Monday (1) to Friday (5), and not in holidays
-    if (dayOfWeek >= 1 && dayOfWeek <= 5 && !holidays.includes(dateStr)) {
+    // Available only Tuesday (2), Wednesday (3), Thursday (4), and not in holidays
+    if ((dayOfWeek === 2 || dayOfWeek === 3 || dayOfWeek === 4) && !holidays.includes(dateStr)) {
       const displayLabel = cursor.toLocaleDateString('id-ID', {
         weekday: 'long',
         day: 'numeric',

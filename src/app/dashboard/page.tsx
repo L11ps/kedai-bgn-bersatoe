@@ -374,9 +374,9 @@ export default function AdminDashboard() {
     const [y, m, d] = newHolidayInput.split('-').map(Number);
     const checkDate = new Date(y, m - 1, d);
     const dayOfWeek = checkDate.getDay();
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      setHolidayWarning('Hari Sabtu dan Minggu sudah otomatis libur operasional.');
-      setTimeout(() => setHolidayWarning(''), 3000);
+    if (dayOfWeek === 0 || dayOfWeek === 1 || dayOfWeek === 5 || dayOfWeek === 6) {
+      setHolidayWarning('Hari Senin, Jumat, Sabtu, dan Minggu sudah otomatis libur operasional (Kedai hanya buka Selasa s/d Kamis).');
+      setTimeout(() => setHolidayWarning(''), 3500);
       return;
     }
     const nextHolidays = [...settings.holidays, newHolidayInput].sort();
@@ -1624,7 +1624,7 @@ export default function AdminDashboard() {
                   <div>
                     <h3 className="font-extrabold text-sm text-slate-900">Tanggal Libur Tambahan</h3>
                     <p className="text-xs text-slate-500">
-                      Sabtu dan Minggu sudah otomatis libur. Tambahkan tanggal merah atau libur kampus di sini.
+                      Senin, Jumat, Sabtu, dan Minggu sudah otomatis libur operasional (Kedai buka Selasa s/d Kamis). Tambahkan libur kampus atau tanggal merah di sini.
                     </p>
                   </div>
                 </div>

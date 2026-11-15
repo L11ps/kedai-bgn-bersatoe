@@ -32,15 +32,15 @@ interface DateOption {
   dayName: string;
 }
 
-// Generate fallback Monday-Friday dates starting tomorrow
+// Generate fallback Tuesday, Wednesday, Thursday dates starting tomorrow
 function getFallbackDates(): DateOption[] {
   const list: DateOption[] = [];
   const cur = new Date();
   cur.setDate(cur.getDate() + 1); // Min H-1
 
   while (list.length < 5) {
-    const day = cur.getDay();
-    if (day >= 1 && day <= 5) {
+    const day = cur.getDay(); // 0 = Sun, 1 = Mon, 2 = Tue, 3 = Wed, 4 = Thu, 5 = Fri, 6 = Sat
+    if (day === 2 || day === 3 || day === 4) {
       const year = cur.getFullYear();
       const month = String(cur.getMonth() + 1).padStart(2, '0');
       const d = String(cur.getDate()).padStart(2, '0');
@@ -96,7 +96,7 @@ export default function CheckoutPage() {
 
   // Fetch admin operational settings (holidays & active slots)
   useEffect(() => {
-    fetch('/api/settings')
+    fetch(`/api/settings?t=${Date.now()}`, { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
@@ -389,7 +389,7 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Section 3: Delivery Date & Time (Min H-1, Senin - Jumat) */}
+          {/* Section 3: Delivery Date & Time (Min H-1, Selasa - Kamis) */}
           <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
               <span className="w-2 h-2 rounded-full bg-[#D4A843]" />
@@ -400,7 +400,7 @@ export default function CheckoutPage() {
 
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-700 block">
-                Pilih Tanggal Pengantaran (Senin s/d Jumat):
+                Pilih Tanggal Pengantaran (Selasa, Rabu, Kamis):
               </label>
               <div className="grid grid-cols-2 gap-1.5">
                 {availableDates.map((d) => {

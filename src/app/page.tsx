@@ -34,7 +34,7 @@ export default function HomePage() {
 
   // Fetch updated menu from API
   useEffect(() => {
-    fetch('/api/menu')
+    fetch(`/api/menu?t=${Date.now()}`, { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.products) {
@@ -87,7 +87,7 @@ export default function HomePage() {
                 Sistem Pemesanan Pre-Order (PO Min H-1)
               </h4>
               <p className="text-[11px] text-slate-600 leading-relaxed mt-0.5">
-                Pengantaran pesanan aktif setiap <strong>Senin s/d Jumat</strong> ke titik temu kampus yang Anda pilih.
+                Pengantaran pesanan aktif setiap <strong>Selasa s/d Kamis</strong> ke titik temu kampus yang Anda pilih.
               </p>
             </div>
           </div>

@@ -8,7 +8,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     category: 'Makanan Utama & Camilan',
     price: 15000,
     description: 'Nasi goreng gurih khas Hongkong beraroma wok hei dengan bumbu spesial, sayuran campur, telur ceplok mata sapi, acar timun segar, dan kerupuk renyah.',
-    image_url: '/images/nasi_goreng_spesial_telur.jpg',
+    image_url: '/images/nasi_goreng_hongkong.jpg',
     is_available: true,
     po_available: true,
     variants: [],

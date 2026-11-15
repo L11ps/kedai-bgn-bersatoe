@@ -184,16 +184,20 @@ export default function CustomDatePicker({
 
           {/* Days of Week Header */}
           <div className="grid grid-cols-7 gap-1 text-center mb-1">
-            {DAY_LABELS.map((day, idx) => (
-              <div
-                key={day}
-                className={`text-[10px] font-bold py-1 ${
-                  idx >= 5 ? 'text-rose-500 font-black' : 'text-slate-500'
-                }`}
-              >
-                {day}
-              </div>
-            ))}
+            {DAY_LABELS.map((day, idx) => {
+              const isOperating = idx === 1 || idx === 2 || idx === 3;
+              return (
+                <div
+                  key={day}
+                  className={`text-[10px] font-bold py-1 ${
+                    isOperating ? 'text-[#0F2547] font-black' : 'text-slate-400 font-medium'
+                  }`}
+                  title={isOperating ? 'Hari Operasional (Buka)' : 'Hari Libur Operasional'}
+                >
+                  {day}
+                </div>
+              );
+            })}
           </div>
 
           {/* Date Matrix */}
@@ -209,7 +213,7 @@ export default function CustomDatePicker({
               const isHoliday = existingHolidays.includes(dateStr);
               // Calculate day of week (Monday=0 ... Sunday=6)
               const cellDayIndex = (startingDayIndex + day - 1) % 7;
-              const isWeekend = cellDayIndex >= 5;
+              const isOperatingDay = cellDayIndex === 1 || cellDayIndex === 2 || cellDayIndex === 3;
 
               return (
                 <button
@@ -221,16 +225,16 @@ export default function CustomDatePicker({
                       ? 'bg-[#0F2547] text-white shadow-sm font-bold'
                       : isHoliday
                       ? 'bg-rose-100 text-rose-800 border border-rose-300 font-bold hover:bg-rose-200'
-                      : isWeekend
-                      ? 'bg-slate-50 text-rose-400 hover:bg-rose-50'
-                      : 'text-slate-700 hover:bg-slate-100'
+                      : !isOperatingDay
+                      ? 'bg-slate-50 text-slate-400 hover:bg-slate-100/80 font-normal'
+                      : 'text-slate-900 bg-emerald-50/40 hover:bg-emerald-50 font-bold'
                   }`}
                   title={
                     isHoliday
                       ? `${dateStr} (Sudah diatur libur)`
-                      : isWeekend
-                      ? `${dateStr} (Weekend, otomatis libur)`
-                      : dateStr
+                      : !isOperatingDay
+                      ? `${dateStr} (Non-operasional: Kedai hanya buka Sel, Rab, Kam)`
+                      : `${dateStr} (Hari Operasional: Buka)`
                   }
                 >
                   <span>{day}</span>
@@ -252,10 +256,10 @@ export default function CustomDatePicker({
           <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Libur
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Buka (Sel, Rab, Kam)
               </span>
               <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#D4A843]" /> Hari Ini
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Libur
               </span>
             </div>
             <button
