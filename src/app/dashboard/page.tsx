@@ -35,6 +35,7 @@ import {
 import { Order, OrderStatus, Product, CampusLocation, OperationalSettings } from '@/types';
 import { formatIDR, formatWIB, formatTo62Phone } from '@/lib/formatters';
 import { INITIAL_PRODUCTS } from '@/lib/products-data';
+import CustomDatePicker from '@/components/CustomDatePicker';
 
 type ActiveTab = 'ORDERS' | 'RECAP' | 'SCHEDULE' | 'FINANCE';
 type OrderFilter = {
@@ -211,6 +212,7 @@ export default function AdminDashboard() {
   const [newSlotInput, setNewSlotInput] = useState('');
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsSavedMessage, setSettingsSavedMessage] = useState('');
+  const [holidayWarning, setHolidayWarning] = useState('');
   const [selectedRecapDate, setSelectedRecapDate] = useState<string>('ALL');
   const [recapCopied, setRecapCopied] = useState(false);
 
@@ -349,9 +351,34 @@ export default function AdminDashboard() {
     }
   };
 
+  const formatHolidayLabel = (isoDate: string) => {
+    if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return isoDate;
+    const [y, m, d] = isoDate.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    return dateObj.toLocaleDateString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
   const handleAddHoliday = () => {
+    setHolidayWarning('');
     if (!newHolidayInput) return;
-    if (settings.holidays.includes(newHolidayInput)) return;
+    if (settings.holidays.includes(newHolidayInput)) {
+      setHolidayWarning('Tanggal ini sudah ada dalam daftar libur.');
+      setTimeout(() => setHolidayWarning(''), 3000);
+      return;
+    }
+    const [y, m, d] = newHolidayInput.split('-').map(Number);
+    const checkDate = new Date(y, m - 1, d);
+    const dayOfWeek = checkDate.getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      setHolidayWarning('Hari Sabtu dan Minggu sudah otomatis libur operasional.');
+      setTimeout(() => setHolidayWarning(''), 3000);
+      return;
+    }
     const nextHolidays = [...settings.holidays, newHolidayInput].sort();
     const nextSettings = { ...settings, holidays: nextHolidays };
     setSettings(nextSettings);
@@ -360,6 +387,7 @@ export default function AdminDashboard() {
   };
 
   const handleRemoveHoliday = (h: string) => {
+    setHolidayWarning('');
     const nextHolidays = settings.holidays.filter((item) => item !== h);
     const nextSettings = { ...settings, holidays: nextHolidays };
     setSettings(nextSettings);
@@ -1596,23 +1624,30 @@ export default function AdminDashboard() {
                   <div>
                     <h3 className="font-extrabold text-sm text-slate-900">Tanggal Libur Tambahan</h3>
                     <p className="text-xs text-slate-500">
-                      Sabtu dan Minggu sudah otomatis libur. Tambahkan tanggal merah / libur kampus di sini.
+                      Sabtu dan Minggu sudah otomatis libur. Tambahkan tanggal merah atau libur kampus di sini.
                     </p>
                   </div>
                 </div>
 
+                {holidayWarning && (
+                  <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs font-semibold text-amber-800 animate-in fade-in">
+                    {holidayWarning}
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2">
-                  <input
-                    type="date"
+                  <CustomDatePicker
                     value={newHolidayInput}
-                    onChange={(e) => setNewHolidayInput(e.target.value)}
-                    className="flex-1 h-9 px-3 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-[#0F2547]"
+                    onChange={setNewHolidayInput}
+                    placeholder="Pilih tanggal libur dari kalender..."
+                    existingHolidays={settings.holidays}
+                    disabled={isSavingSettings}
                   />
                   <button
                     type="button"
                     onClick={handleAddHoliday}
                     disabled={!newHolidayInput || isSavingSettings}
-                    className="h-9 px-3.5 rounded-xl bg-[#0F2547] hover:bg-[#163566] text-white font-bold text-xs flex items-center gap-1 disabled:opacity-50 transition-colors"
+                    className="h-9 px-3.5 rounded-xl bg-[#0F2547] hover:bg-[#163566] text-white font-bold text-xs flex items-center gap-1 disabled:opacity-50 transition-colors shrink-0"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Tambah Libur</span>
@@ -1628,13 +1663,17 @@ export default function AdminDashboard() {
                     settings.holidays.map((h) => (
                       <div
                         key={h}
-                        className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs"
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs hover:bg-slate-100/70 transition-colors"
                       >
-                        <span className="font-mono font-semibold text-slate-700">{h}</span>
+                        <div className="flex items-center gap-2 truncate">
+                          <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                          <span className="font-bold text-slate-800">{formatHolidayLabel(h)}</span>
+                          <span className="font-mono text-[11px] text-slate-400">({h})</span>
+                        </div>
                         <button
                           type="button"
                           onClick={() => handleRemoveHoliday(h)}
-                          className="text-slate-400 hover:text-rose-600 p-1"
+                          className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors"
                           title="Hapus Tanggal Libur"
                         >
                           <Trash2 className="w-3.5 h-3.5" />

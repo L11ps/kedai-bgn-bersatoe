@@ -83,13 +83,19 @@ export interface AvailableDateOption {
   dayName: string; // "Senin"
 }
 
+export function getJakartaDate(): Date {
+  const now = new Date();
+  const jakartaStr = now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' });
+  return new Date(jakartaStr);
+}
+
 // Generate available delivery dates (minimum H-1, Monday to Friday only, excluding holidays)
 export function getAvailableDeliveryDates(count = 7): AvailableDateOption[] {
   const settings = getOperationalSettings();
   const holidays = settings.holidays || [];
   const results: AvailableDateOption[] = [];
 
-  const cursor = new Date();
+  const cursor = getJakartaDate();
   // Minimal H-1: start from tomorrow
   cursor.setDate(cursor.getDate() + 1);
 
