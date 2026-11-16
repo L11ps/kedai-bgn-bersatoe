@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { CheckoutPayload } from '@/types';
-import { getProducts, createOrderInMemory } from '@/lib/order-store';
+import { getProducts, createOrderInMemory, getPaymentByOrderId } from '@/lib/order-store';
 import { isSupabaseConfigured, supabaseAdmin } from '@/lib/supabase';
 import { appendToGoogleSheet, formatIDR, formatWIB, formatTo62Phone } from '@/lib/google-sheets';
 import { sendOrderPaidNotification, sendOperationalGroupSummary } from '@/lib/whatsapp';
@@ -192,6 +192,41 @@ export async function POST(req: Request) {
           order_status: order.order_status,
           queue_number: order.queue_number,
         });
+
+        // Insert order_items
+        if (order.items && order.items.length > 0) {
+          const orderItemsToInsert = order.items.map((it) => ({
+            order_id: order.id,
+            product_id: null,
+            product_name: it.product_name,
+            unit_price: it.unit_price,
+            quantity: it.quantity,
+            selected_options: it.selected_options || {},
+            special_notes: it.special_notes || '',
+            subtotal: it.subtotal,
+          }));
+          await supabaseAdmin.from('order_items').insert(orderItemsToInsert);
+        }
+
+        // Insert payments
+        const paymentRecord = getPaymentByOrderId(order.id);
+        if (paymentRecord) {
+          await supabaseAdmin.from('payments').insert({
+            id: paymentRecord.id,
+            order_id: order.id,
+            gateway_reference_id: paymentRecord.gateway_reference_id,
+            payment_method: paymentRecord.payment_method,
+            payment_status: paymentRecord.payment_status,
+            gross_amount: paymentRecord.gross_amount,
+            mdr_percentage: paymentRecord.mdr_percentage,
+            mdr_fee_amount: paymentRecord.mdr_fee_amount,
+            net_revenue: paymentRecord.net_revenue,
+            qr_string: paymentRecord.qr_string || null,
+            deeplink_url: paymentRecord.deeplink_url || null,
+            expiry_time: paymentRecord.expiry_time || null,
+            paid_at: paymentRecord.paid_at || null,
+          });
+        }
       } catch (dbErr) {
         console.warn('[Supabase Insert Error]:', dbErr);
       }

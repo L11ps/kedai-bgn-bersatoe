@@ -1229,12 +1229,16 @@ export default function AdminDashboard() {
                             {/* Kolom 3: Menu Pesanan */}
                             <td className="px-3 py-3">
                               <div className="space-y-1">
-                                {order.items?.map((it) => (
-                                  <div key={it.id || it.product_id} className="text-xs text-slate-800 leading-snug">
-                                    <span className="font-bold text-[#0F2547]">{it.quantity}x</span>{' '}
-                                    <span>{it.product_name}</span>
-                                  </div>
-                                ))}
+                                {order.items && order.items.length > 0 ? (
+                                  order.items.map((it, idx) => (
+                                    <div key={it.id || it.product_id || idx} className="text-xs text-slate-800 leading-snug">
+                                      <span className="font-bold text-[#0F2547]">{it.quantity}x</span>{' '}
+                                      <span>{it.product_name || (it as unknown as { name?: string }).name || 'Menu'}</span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <span className="text-[11px] text-slate-400 italic">Menu tidak tercatat</span>
+                                )}
                               </div>
                             </td>
 
