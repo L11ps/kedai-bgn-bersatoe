@@ -243,8 +243,8 @@ export function createOrderInMemory(params: {
     order_notes: params.order_notes,
     scheduled_time: params.scheduled_time,
     gross_amount: params.gross_amount,
-    // Cash orders are registered directly as PAID/CONFIRMED or waiting cash delivery
-    order_status: isCash ? 'PAID' : 'WAITING_PAYMENT',
+    // New orders start in WAITING_PAYMENT until verified/paid
+    order_status: 'WAITING_PAYMENT',
     payment_method: params.payment_method,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -271,7 +271,7 @@ export function createOrderInMemory(params: {
     order_id: orderId,
     gateway_reference_id: isCash ? `CASH-${orderCode}` : `GW-${orderCode}`,
     payment_method: params.payment_method,
-    payment_status: isCash ? 'SETTLEMENT' : 'PENDING',
+    payment_status: 'PENDING',
     gross_amount: params.gross_amount,
     mdr_percentage: mdrRate,
     mdr_fee_amount: mdrFee,
@@ -279,7 +279,7 @@ export function createOrderInMemory(params: {
     qr_string: params.qr_string || null,
     deeplink_url: params.redirect_url || null,
     expiry_time: isCash ? null : params.expiry_time,
-    paid_at: isCash ? new Date().toISOString() : null,
+    paid_at: null,
     sheet_sync_status: false,
     sheet_row_number: null,
     created_at: new Date().toISOString(),

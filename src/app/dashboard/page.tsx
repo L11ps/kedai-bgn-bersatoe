@@ -451,7 +451,8 @@ export default function AdminDashboard() {
   const totalGross = paidOrders.reduce((acc, o) => acc + (o.gross_amount || 0), 0);
   const totalPendingGross = pendingOrders.reduce((acc, o) => acc + (o.gross_amount || 0), 0);
   const totalMdr = paidOrders.reduce((acc, o) => {
-    if (o.payment_method === 'CASH') return acc;
+    const pMethod = o.payment_method || o.payments?.[0]?.payment_method || 'CASH';
+    if (pMethod === 'CASH') return acc;
     const pay = o.payments?.[0];
     return acc + (pay?.mdr_fee_amount ?? Math.round((o.gross_amount || 0) * 0.007));
   }, 0);
@@ -527,7 +528,7 @@ export default function AdminDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId: orderForProof.id,
-          newStatus: 'PAID',
+          newStatus: orderForProof.order_status === 'WAITING_PAYMENT' ? 'PAID' : orderForProof.order_status,
           proofBase64: proofPreview,
         }),
       });
@@ -591,7 +592,8 @@ export default function AdminDashboard() {
     ].join(',');
     const rows = displayedFinanceOrders.map((o) => {
       const isPaid = [...PROCESSING_STATUSES, ...DONE_STATUSES].includes(o.order_status);
-      const isCash = o.payment_method === 'CASH';
+      const pMethod = o.payment_method || o.payments?.[0]?.payment_method || 'CASH';
+      const isCash = pMethod === 'CASH';
       const mdrFee = isPaid
         ? isCash
           ? 0
@@ -607,7 +609,7 @@ export default function AdminDashboard() {
         `"${o.customer_whatsapp}"`,
         `"${o.campus_location}"`,
         `"${items}"`,
-        o.payment_method,
+        pMethod,
         o.gross_amount,
         mdrFee,
         netRev,
@@ -633,16 +635,17 @@ export default function AdminDashboard() {
     });
 
     const totalCashGross = paidOrders
-      .filter((o) => o.payment_method === 'CASH')
+      .filter((o) => (o.payment_method || o.payments?.[0]?.payment_method || 'CASH') === 'CASH')
       .reduce((acc, o) => acc + (o.gross_amount || 0), 0);
     const totalQrisGross = paidOrders
-      .filter((o) => o.payment_method !== 'CASH')
+      .filter((o) => (o.payment_method || o.payments?.[0]?.payment_method || 'CASH') !== 'CASH')
       .reduce((acc, o) => acc + (o.gross_amount || 0), 0);
 
     const rowsHtml = displayedFinanceOrders
       .map((o, idx) => {
         const isPaid = [...PROCESSING_STATUSES, ...DONE_STATUSES].includes(o.order_status);
-        const isCash = o.payment_method === 'CASH';
+        const pMethod = o.payment_method || o.payments?.[0]?.payment_method || 'CASH';
+        const isCash = pMethod === 'CASH';
         const mdrFee = isPaid
           ? isCash
             ? 0
@@ -667,7 +670,7 @@ export default function AdminDashboard() {
             <td style="border: 1px solid #CBD5E1; padding: 8px;">${campus}</td>
             <td style="border: 1px solid #CBD5E1; padding: 8px;">${notes || '-'}</td>
             <td style="border: 1px solid #CBD5E1; padding: 8px;">${items}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: center; font-weight: bold;">${o.payment_method}</td>
+            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: center; font-weight: bold;">${pMethod}</td>
             <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; mso-number-format:'#,##0';">${o.gross_amount || 0}</td>
             <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; color: #DC2626; mso-number-format:'#,##0';">${mdrFee}</td>
             <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold; color: ${isPaid ? '#059669' : '#D97706'}; mso-number-format:'#,##0';">${isPaid ? netRev : 'Pending'}</td>
@@ -926,7 +929,8 @@ export default function AdminDashboard() {
       halimunRecapOrders.forEach((o, i) => {
         const items = (o.items || []).map((it) => `${it.quantity}x ${it.product_name}`).join(', ');
         const notes = o.order_notes ? ` [Catatan: ${o.order_notes}]` : '';
-        const payStatus = o.payment_method === 'CASH' ? `Tagih Tunai Rp ${o.gross_amount.toLocaleString('id-ID')}` : 'QRIS Lunas';
+        const pMethod = o.payment_method || o.payments?.[0]?.payment_method || 'CASH';
+        const payStatus = pMethod === 'CASH' ? `Tagih Tunai Rp ${o.gross_amount.toLocaleString('id-ID')}` : 'QRIS Lunas';
         text += `${i + 1}. [${o.queue_number || o.order_code}] ${o.customer_name} (${o.customer_whatsapp}) | Jam ${o.scheduled_time.split(' pukul ')[1] || o.scheduled_time} | Titik: ${o.location_notes || '-'} | Menu: ${items}${notes} | ${payStatus}\n`;
       });
     }
@@ -937,7 +941,8 @@ export default function AdminDashboard() {
       minangkabauRecapOrders.forEach((o, i) => {
         const items = (o.items || []).map((it) => `${it.quantity}x ${it.product_name}`).join(', ');
         const notes = o.order_notes ? ` [Catatan: ${o.order_notes}]` : '';
-        const payStatus = o.payment_method === 'CASH' ? `Tagih Tunai Rp ${o.gross_amount.toLocaleString('id-ID')}` : 'QRIS Lunas';
+        const pMethod = o.payment_method || o.payments?.[0]?.payment_method || 'CASH';
+        const payStatus = pMethod === 'CASH' ? `Tagih Tunai Rp ${o.gross_amount.toLocaleString('id-ID')}` : 'QRIS Lunas';
         text += `${i + 1}. [${o.queue_number || o.order_code}] ${o.customer_name} (${o.customer_whatsapp}) | Jam ${o.scheduled_time.split(' pukul ')[1] || o.scheduled_time} | Titik: ${o.location_notes || '-'} | Menu: ${items}${notes} | ${payStatus}\n`;
       });
     }
@@ -1154,13 +1159,14 @@ export default function AdminDashboard() {
 
                         const next = nextStatusMap[order.order_status];
                         const isUpdating = isUpdatingStatus === order.id;
-                        const isCashOrder = order.payment_method === 'CASH';
+                        const pMethod = order.payment_method || order.payments?.[0]?.payment_method || 'CASH';
+                        const isCashOrder = pMethod === 'CASH';
                         const isWaitingOrPending =
                           order.order_status === 'WAITING_PAYMENT' ||
                           (order.order_status as string) === 'PENDING';
                         const proofUrl =
                           order.delivery_proof_url ||
-                          (order.payments?.[0]?.deeplink_url?.startsWith('http')
+                          (order.payments?.[0]?.deeplink_url?.startsWith('http') || order.payments?.[0]?.deeplink_url?.startsWith('data:')
                             ? order.payments[0].deeplink_url
                             : null);
 
@@ -1247,29 +1253,38 @@ export default function AdminDashboard() {
                               <div className="text-xs font-black text-slate-900">
                                 {formatIDR(order.gross_amount)}
                               </div>
-                              <div className="mt-1 flex items-center gap-1">
+                              <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                                 <span
                                   className={`inline-block text-[9px] font-black uppercase px-2 py-0.5 rounded border ${
-                                    order.payment_method === 'CASH'
+                                    isCashOrder
                                       ? 'bg-amber-100 text-amber-800 border-amber-300'
                                       : 'bg-blue-100 text-blue-800 border-blue-300'
                                   }`}
                                 >
-                                  {order.payment_method}
+                                  {pMethod}
                                 </span>
+                                {proofUrl ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setViewingProofUrl(proofUrl)}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-[9px] font-bold transition-colors cursor-pointer"
+                                    title="Lihat Foto Bukti Serah Terima Makanan"
+                                  >
+                                    <Camera className="w-2.5 h-2.5 text-emerald-600" />
+                                    <span>Bukti Foto</span>
+                                  </button>
+                                ) : isCashOrder ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenProofModal(order)}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 text-[9px] font-bold transition-colors cursor-pointer"
+                                    title="Upload Foto Bukti Serah Terima Makanan & Pembayaran Cash"
+                                  >
+                                    <Upload className="w-2.5 h-2.5 text-amber-600" />
+                                    <span>+ Bukti Foto</span>
+                                  </button>
+                                ) : null}
                               </div>
-                              {/* Tombol Lihat Foto Bukti jika ada */}
-                              {proofUrl && (
-                                <button
-                                  type="button"
-                                  onClick={() => setViewingProofUrl(proofUrl)}
-                                  className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-[10px] font-bold transition-colors cursor-pointer"
-                                  title="Lihat Foto Bukti Serah Terima Makanan"
-                                >
-                                  <Camera className="w-3 h-3 text-emerald-600" />
-                                  <span>Foto Bukti</span>
-                                </button>
-                              )}
                             </td>
 
                             {/* Kolom 5: Status & Aksi */}
@@ -1277,7 +1292,7 @@ export default function AdminDashboard() {
                               <div className="flex items-start gap-1.5">
                                 <div className="space-y-1.5 flex-1 min-w-0">
                                   <span className={statusPill(order.order_status)}>
-                                    {statusLabel(order.order_status, order.payment_method)}
+                                    {statusLabel(order.order_status, pMethod)}
                                   </span>
 
                                   {/* Khusus COD / CASH yang Menunggu Bayar: Wajib Upload Bukti Foto */}
@@ -1465,7 +1480,7 @@ export default function AdminDashboard() {
                     </p>
                   ) : (
                     halimunRecapOrders.map((o, idx) => {
-                      const isCash = o.payment_method === 'CASH';
+                      const isCash = (o.payment_method || o.payments?.[0]?.payment_method || 'CASH') === 'CASH';
                       const itemsStr = (o.items || [])
                         .map((it) => `${it.quantity}x ${it.product_name}`)
                         .join(', ');
@@ -1548,7 +1563,7 @@ export default function AdminDashboard() {
                     </p>
                   ) : (
                     minangkabauRecapOrders.map((o, idx) => {
-                      const isCash = o.payment_method === 'CASH';
+                      const isCash = (o.payment_method || o.payments?.[0]?.payment_method || 'CASH') === 'CASH';
                       const itemsStr = (o.items || [])
                         .map((it) => `${it.quantity}x ${it.product_name}`)
                         .join(', ');
@@ -1892,7 +1907,8 @@ export default function AdminDashboard() {
                     <tbody className="divide-y divide-slate-100">
                       {displayedFinanceOrders.map((o) => {
                         const isPaid = [...PROCESSING_STATUSES, ...DONE_STATUSES].includes(o.order_status);
-                        const isCash = o.payment_method === 'CASH';
+                        const pMethod = o.payment_method || o.payments?.[0]?.payment_method || 'CASH';
+                        const isCash = pMethod === 'CASH';
                         const mdrFee = isPaid
                           ? isCash
                             ? 0
@@ -1905,7 +1921,7 @@ export default function AdminDashboard() {
                           .join(', ');
                         const proof =
                           o.delivery_proof_url ||
-                          (o.payments?.[0]?.deeplink_url?.startsWith('http')
+                          (o.payments?.[0]?.deeplink_url?.startsWith('http') || o.payments?.[0]?.deeplink_url?.startsWith('data:')
                             ? o.payments[0].deeplink_url
                             : null);
 
@@ -1943,28 +1959,44 @@ export default function AdminDashboard() {
                             </td>
 
                             <td className="px-3 py-3 align-top">
-                              <span
-                                className={`inline-block text-[9px] font-black uppercase px-2 py-0.5 rounded border ${
-                                  isCash
-                                    ? 'bg-amber-100 text-amber-800 border-amber-300'
-                                    : 'bg-blue-100 text-blue-800 border-blue-300'
-                                }`}
-                              >
-                                {o.payment_method}
-                              </span>
-                              {proof && (
-                                <div className="mt-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => setViewingProofUrl(proof)}
-                                    className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200"
-                                    title="Lihat foto bukti"
-                                  >
-                                    <Camera className="w-2.5 h-2.5 text-emerald-600" />
-                                    <span>Bukti Foto</span>
-                                  </button>
-                                </div>
-                              )}
+                              <div className="space-y-1">
+                                <span
+                                  className={`inline-block text-[9px] font-black uppercase px-2 py-0.5 rounded border ${
+                                    isCash
+                                      ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                      : 'bg-blue-100 text-blue-800 border-blue-300'
+                                  }`}
+                                >
+                                  {pMethod}
+                                </span>
+                                {proof ? (
+                                  <div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setViewingProofUrl(proof)}
+                                      className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 cursor-pointer"
+                                      title="Lihat foto bukti"
+                                    >
+                                      <Camera className="w-2.5 h-2.5 text-emerald-600" />
+                                      <span>Bukti Foto</span>
+                                    </button>
+                                  </div>
+                                ) : isCash ? (
+                                  <div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenProofModal(o)}
+                                      className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200 cursor-pointer"
+                                      title="Upload foto bukti serah terima cash"
+                                    >
+                                      <Upload className="w-2.5 h-2.5 text-amber-600" />
+                                      <span>+ Upload Bukti</span>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="text-[9px] text-slate-400">QRIS Midtrans</div>
+                                )}
+                              </div>
                             </td>
 
                             <td className="px-3 py-3 align-top text-right font-bold text-slate-900">

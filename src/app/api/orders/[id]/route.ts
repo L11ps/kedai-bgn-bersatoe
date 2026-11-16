@@ -44,11 +44,19 @@ export async function GET(
     }
 
     const payment = getPaymentByOrderId(order.id) || order.payments?.[0];
+    const paymentMethod = (order.payment_method as string) || payment?.payment_method || 'CASH';
+    const proofUrl =
+      order.delivery_proof_url ||
+      (payment?.deeplink_url && (payment.deeplink_url.startsWith('http') || payment.deeplink_url.startsWith('data:'))
+        ? payment.deeplink_url
+        : null);
 
     return NextResponse.json({
       success: true,
       order: {
         ...order,
+        payment_method: paymentMethod,
+        delivery_proof_url: proofUrl,
         payment,
       },
     });

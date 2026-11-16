@@ -39,7 +39,23 @@ export async function GET(req: Request) {
 
         const { data: dbOrders, error } = await query;
         if (!error && dbOrders && dbOrders.length > 0) {
-          return NextResponse.json({ success: true, orders: dbOrders });
+          const mappedOrders = dbOrders.map((o) => {
+            const payments = Array.isArray(o.payments) ? o.payments : [];
+            const latestPayment = payments.length > 0 ? payments[0] : null;
+            const paymentMethod = (o.payment_method as string) || latestPayment?.payment_method || 'CASH';
+            const proofUrl =
+              o.delivery_proof_url ||
+              (latestPayment?.deeplink_url &&
+              (latestPayment.deeplink_url.startsWith('http') || latestPayment.deeplink_url.startsWith('data:'))
+                ? latestPayment.deeplink_url
+                : null);
+            return {
+              ...o,
+              payment_method: paymentMethod,
+              delivery_proof_url: proofUrl,
+            };
+          });
+          return NextResponse.json({ success: true, orders: mappedOrders });
         }
       } catch (dbErr) {
         console.warn('[Supabase Orders Fetch Error]:', dbErr);
@@ -148,7 +164,7 @@ export async function PATCH(req: Request) {
           .update(updatePayload)
           .eq('id', order.id);
 
-        if (['PAID', 'COOKING', 'READY_FOR_DELIVERY', 'COMPLETED'].includes(newStatus)) {
+        if (['PAID', 'COOKING', 'READY_FOR_DELIVERY', 'COMPLETED'].includes(newStatus) || savedProofUrl) {
           const payPayload: Record<string, unknown> = {
             payment_status: 'SETTLEMENT',
             paid_at: new Date().toISOString(),
@@ -156,10 +172,27 @@ export async function PATCH(req: Request) {
           if (savedProofUrl) {
             payPayload.deeplink_url = savedProofUrl;
           }
-          await supabaseAdmin
+          const { data: updatedPay } = await supabaseAdmin
             .from('payments')
             .update(payPayload)
-            .eq('order_id', order.id);
+            .eq('order_id', order.id)
+            .select();
+
+          if (!updatedPay || updatedPay.length === 0) {
+            await supabaseAdmin.from('payments').insert({
+              id: crypto.randomUUID(),
+              order_id: order.id,
+              gateway_reference_id: `CASH-${order.order_code}`,
+              payment_method: order.payment_method || 'CASH',
+              payment_status: 'SETTLEMENT',
+              gross_amount: order.gross_amount,
+              mdr_percentage: 0,
+              mdr_fee_amount: 0,
+              net_revenue: order.gross_amount,
+              deeplink_url: savedProofUrl || null,
+              paid_at: new Date().toISOString(),
+            });
+          }
         }
       } catch (dbErr) {
         console.warn('[Supabase Order Status Update Error]:', dbErr);
@@ -185,7 +218,11 @@ export async function PATCH(req: Request) {
     return NextResponse.json({
       success: true,
       message: `Order status updated to ${newStatus}`,
-      order,
+      order: {
+        ...order,
+        delivery_proof_url: savedProofUrl || order.delivery_proof_url,
+        payment_method: order.payment_method || 'CASH',
+      },
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
