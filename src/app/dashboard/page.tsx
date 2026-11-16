@@ -424,11 +424,12 @@ export default function AdminDashboard() {
     }
   };
 
-  // Unique scheduled dates from incoming orders for date filter
+  // Unique scheduled dates from incoming active orders for date filter
   const orderDates = useMemo(() => {
     return Array.from(
       new Set(
         orders
+          .filter((o) => o.order_status !== 'CANCELLED' && o.order_status !== 'EXPIRED')
           .map((o) => (o.scheduled_time || '').split(' pukul ')[0].trim())
           .filter(Boolean)
       )
@@ -441,6 +442,11 @@ export default function AdminDashboard() {
       ...orderDates.map((d) => ({ value: d, label: d })),
     ];
   }, [orderDates]);
+
+  const handleDateChange = (newDate: string) => {
+    setFilter((f) => ({ ...f, date: newDate }));
+    setSelectedRecapDate(newDate);
+  };
 
   // Filtered orders
   const filteredOrders = orders.filter((o) => {
@@ -457,6 +463,34 @@ export default function AdminDashboard() {
     }
     return true;
   });
+
+  // Portion calculation for kitchen target based on active date and campus filter
+  const kitchenTargetOrders = useMemo(() => {
+    return orders.filter((o) => {
+      if (o.order_status === 'CANCELLED' || o.order_status === 'EXPIRED') return false;
+      if (filter.campus !== 'ALL' && o.campus_location !== filter.campus) return false;
+      if (filter.date !== 'ALL') {
+        const orderDate = (o.scheduled_time || '').split(' pukul ')[0].trim();
+        if (orderDate !== filter.date) return false;
+      }
+      return true;
+    });
+  }, [orders, filter.campus, filter.date]);
+
+  const kitchenPortionCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    kitchenTargetOrders.forEach((o) => {
+      (o.items || []).forEach((it) => {
+        const name = it.product_name || (it as unknown as { name?: string }).name || 'Menu';
+        counts[name] = (counts[name] || 0) + (it.quantity || 1);
+      });
+    });
+    return counts;
+  }, [kitchenTargetOrders]);
+
+  const totalKitchenPortions = useMemo(() => {
+    return Object.values(kitchenPortionCounts).reduce((acc, c) => acc + c, 0);
+  }, [kitchenPortionCounts]);
 
   const countHalimun = orders.filter((o) => o.campus_location === 'Kampus B Halimun').length;
   const countMinangkabau = orders.filter((o) => o.campus_location === 'Kampus C Minangkabau').length;
@@ -1109,9 +1143,7 @@ export default function AdminDashboard() {
               <div className="flex flex-wrap items-center gap-2">
                 <CustomSelect
                   value={filter.date}
-                  onChange={(v) =>
-                    setFilter((f) => ({ ...f, date: v }))
-                  }
+                  onChange={handleDateChange}
                   options={DATE_OPTIONS}
                 />
                 <CustomSelect
@@ -1147,7 +1179,10 @@ export default function AdminDashboard() {
                 {hasFilter && (
                   <button
                     type="button"
-                    onClick={() => setFilter({ campus: 'ALL', status: 'ALL', date: 'ALL' })}
+                    onClick={() => {
+                      setFilter({ campus: 'ALL', status: 'ALL', date: 'ALL' });
+                      setSelectedRecapDate('ALL');
+                    }}
                     className="h-9 px-2.5 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1 transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -1155,6 +1190,106 @@ export default function AdminDashboard() {
                   </button>
                 )}
               </div>
+            </div>
+
+            {/* Widget Rekap Target Porsi Masak Tim Dapur Berdasarkan Tanggal & Filter */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-2.5 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-[#D4A843]/30 flex items-center justify-center shrink-0">
+                    <ChefHat className="w-4 h-4 text-[#D4A843]" />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-extrabold text-sm text-[#0F2547]">
+                        Target Porsi Masak Tim Dapur
+                      </h3>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                        {filter.date === 'ALL' ? 'Semua Jadwal' : filter.date}
+                      </span>
+                      {filter.campus !== 'ALL' && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                          {CAMPUS_LABELS[filter.campus] || filter.campus}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Rincian total porsi yang harus dimasak berdasarkan filter jadwal dan kampus
+                    </p>
+                  </div>
+                </div>
+
+                {/* Quick Date Pills */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-400 mr-1 hidden sm:inline">
+                    Pilih Jadwal:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleDateChange('ALL')}
+                    className={`h-7 px-2.5 rounded-lg text-xs font-bold transition-all ${
+                      filter.date === 'ALL'
+                        ? 'bg-[#0F2547] text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                    }`}
+                  >
+                    Semua
+                  </button>
+                  {orderDates.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => handleDateChange(d)}
+                      className={`h-7 px-2.5 rounded-lg text-xs font-bold transition-all ${
+                        filter.date === d
+                          ? 'bg-[#0F2547] text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Grid Kartu Menu & Jumlah Porsi */}
+              {Object.keys(kitchenPortionCounts).length === 0 ? (
+                <div className="py-4 text-center text-xs text-slate-400 italic">
+                  Tidak ada pesanan aktif yang perlu dimasak untuk jadwal ini.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {Object.entries(kitchenPortionCounts).map(([name, count]) => (
+                    <div
+                      key={name}
+                      className="bg-gradient-to-br from-slate-50 to-amber-50/40 p-3.5 rounded-xl border border-slate-200/90 flex flex-col justify-between shadow-xs"
+                    >
+                      <span className="text-xs font-bold text-slate-800 leading-snug line-clamp-1" title={name}>
+                        {name}
+                      </span>
+                      <div className="mt-2.5 flex items-baseline justify-between">
+                        <span className="text-2xl font-black text-[#0F2547]">{count}</span>
+                        <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">
+                          Porsi / Btl
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Kartu Ringkasan Total Porsi Keseluruhan */}
+                  <div className="bg-[#0F2547] text-white p-3.5 rounded-xl border border-[#0F2547] flex flex-col justify-between shadow-xs">
+                    <span className="text-xs font-bold text-amber-300 leading-snug">
+                      Total Keseluruhan
+                    </span>
+                    <div className="mt-2.5 flex items-baseline justify-between">
+                      <span className="text-2xl font-black text-white">{totalKitchenPortions}</span>
+                      <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                        {kitchenTargetOrders.length} Pesanan
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Orders Table (Fit Layar Penuh Tanpa Horizontal Scroll) */}
@@ -1427,7 +1562,7 @@ export default function AdminDashboard() {
                   <span className="text-slate-400 font-medium">Jadwal:</span>
                   <select
                     value={selectedRecapDate}
-                    onChange={(e) => setSelectedRecapDate(e.target.value)}
+                    onChange={(e) => handleDateChange(e.target.value)}
                     className="bg-transparent font-bold text-slate-800 focus:outline-none cursor-pointer"
                   >
                     <option value="ALL">Semua Jadwal ({validRecapOrders.length})</option>
