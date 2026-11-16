@@ -106,10 +106,16 @@ function CustomSelect({
   value,
   onChange,
   options,
+  icon,
+  align = 'left',
+  className = '',
 }: {
   value: string;
   onChange: (v: string) => void;
   options: SelectOption[];
+  icon?: React.ReactNode;
+  align?: 'left' | 'right';
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -127,13 +133,16 @@ function CustomSelect({
   const cur = options.find((o) => o.value === value);
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className={`relative ${className}`}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="h-9 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center justify-between gap-2 min-w-[130px] transition-colors shadow-xs"
+        className="h-9 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center justify-between gap-2 min-w-[130px] transition-colors shadow-xs cursor-pointer"
       >
-        <span className="truncate">{cur?.label || value}</span>
+        <div className="flex items-center gap-1.5 truncate">
+          {icon && <span className="text-slate-400 shrink-0">{icon}</span>}
+          <span className="truncate">{cur?.label || value}</span>
+        </div>
         <ChevronDown
           className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${
             open ? 'rotate-180' : ''
@@ -142,7 +151,11 @@ function CustomSelect({
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg py-1 min-w-full overflow-hidden text-xs">
+        <div
+          className={`absolute top-full ${
+            align === 'right' ? 'right-0' : 'left-0'
+          } mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg py-1 min-w-full w-max max-w-[320px] overflow-hidden text-xs`}
+        >
           {options.map((opt) => (
             <button
               key={opt.value}
@@ -955,6 +968,19 @@ export default function AdminDashboard() {
     )
   );
 
+  const recapDateOptions: SelectOption[] = useMemo(() => {
+    return [
+      { value: 'ALL', label: `Semua Jadwal (${validRecapOrders.length})` },
+      ...recapDates.map((d) => {
+        const count = validRecapOrders.filter((o) => (o.scheduled_time || '').startsWith(d)).length;
+        return {
+          value: d,
+          label: `${d} (${count})`,
+        };
+      }),
+    ];
+  }, [recapDates, validRecapOrders]);
+
   const displayedRecapOrders =
     selectedRecapDate === 'ALL'
       ? validRecapOrders
@@ -1145,6 +1171,7 @@ export default function AdminDashboard() {
                   value={filter.date}
                   onChange={handleDateChange}
                   options={DATE_OPTIONS}
+                  icon={<Calendar className="w-3.5 h-3.5 text-slate-500" />}
                 />
                 <CustomSelect
                   value={filter.status}
@@ -1556,23 +1583,14 @@ export default function AdminDashboard() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {/* Date Filter Dropdown */}
-                <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200 text-xs">
-                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                  <span className="text-slate-400 font-medium">Jadwal:</span>
-                  <select
-                    value={selectedRecapDate}
-                    onChange={(e) => handleDateChange(e.target.value)}
-                    className="bg-transparent font-bold text-slate-800 focus:outline-none cursor-pointer"
-                  >
-                    <option value="ALL">Semua Jadwal ({validRecapOrders.length})</option>
-                    {recapDates.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {/* Date Filter Custom Dropdown */}
+                <CustomSelect
+                  value={selectedRecapDate}
+                  onChange={handleDateChange}
+                  options={recapDateOptions}
+                  icon={<Calendar className="w-3.5 h-3.5 text-slate-500" />}
+                  align="right"
+                />
 
                 {/* Copy to WhatsApp Group Button */}
                 <button
