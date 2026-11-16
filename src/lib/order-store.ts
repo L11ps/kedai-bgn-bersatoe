@@ -217,6 +217,8 @@ export function createOrderInMemory(params: {
   qr_string?: string;
   redirect_url?: string;
   expiry_time: string;
+  order_code?: string;
+  queue_number?: string | null;
 }) {
   const orderId =
     typeof crypto !== 'undefined' && crypto.randomUUID
@@ -226,10 +228,13 @@ export function createOrderInMemory(params: {
     typeof crypto !== 'undefined' && crypto.randomUUID
       ? crypto.randomUUID()
       : 'pay-' + Math.random().toString(36).substring(2, 9);
-  const orderCode = generateOrderCode();
+  const orderCode = params.order_code || generateOrderCode();
 
   const isCash = params.payment_method === 'CASH';
-  const queueNumber = isCash ? generateKitchenQueueNumber() : null;
+  const queueNumber =
+    params.queue_number !== undefined
+      ? params.queue_number
+      : (isCash ? generateKitchenQueueNumber() : null);
 
   const newOrder: Order = {
     id: orderId,

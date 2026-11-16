@@ -1,9 +1,48 @@
 import { NextResponse } from 'next/server';
 import { CheckoutPayload } from '@/types';
-import { getProducts, createOrderInMemory, getPaymentByOrderId } from '@/lib/order-store';
+import { getProducts, createOrderInMemory, getPaymentByOrderId, getAllOrders } from '@/lib/order-store';
 import { isSupabaseConfigured, supabaseAdmin } from '@/lib/supabase';
 import { appendToGoogleSheet, formatIDR, formatWIB, formatTo62Phone } from '@/lib/google-sheets';
 import { sendOrderPaidNotification, sendOperationalGroupSummary } from '@/lib/whatsapp';
+
+async function getNextOrderSequence(dateStr: string): Promise<number> {
+  let maxSeq = 0;
+
+  if (isSupabaseConfigured && supabaseAdmin) {
+    try {
+      const { data: todayOrders } = await supabaseAdmin
+        .from('orders')
+        .select('order_code')
+        .ilike('order_code', `BGN-${dateStr}-%`);
+
+      if (todayOrders && todayOrders.length > 0) {
+        for (const ord of todayOrders) {
+          const m = ord.order_code?.match(/(\d+)$/);
+          if (m) {
+            const num = parseInt(m[1], 10);
+            if (num > maxSeq) maxSeq = num;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Get Next Order Sequence Error]:', err);
+    }
+  }
+
+  // Also verify against in-memory orders
+  const memOrders = getAllOrders();
+  for (const ord of memOrders) {
+    if (ord.order_code?.startsWith(`BGN-${dateStr}-`)) {
+      const m = ord.order_code.match(/(\d+)$/);
+      if (m) {
+        const num = parseInt(m[1], 10);
+        if (num > maxSeq) maxSeq = num;
+      }
+    }
+  }
+
+  return maxSeq + 1;
+}
 
 export async function POST(req: Request) {
   try {
@@ -108,6 +147,16 @@ export async function POST(req: Request) {
     const expiryDate = new Date(now.getTime() + 15 * 60 * 1000);
     const expiryIso = expiryDate.toISOString();
 
+    const jakartaTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    const year = jakartaTime.getFullYear();
+    const month = String(jakartaTime.getMonth() + 1).padStart(2, '0');
+    const day = String(jakartaTime.getDate()).padStart(2, '0');
+    const dateStr = `${year}${month}${day}`;
+
+    const seqNum = await getNextOrderSequence(dateStr);
+    const assignedOrderCode = `BGN-${dateStr}-${String(seqNum % 10000).padStart(4, '0')}`;
+    const assignedQueueNumber = `A-${String(seqNum % 1000).padStart(3, '0')}`;
+
     let redirectUrl: string | undefined = undefined;
     let snapToken: string | undefined = undefined;
 
@@ -120,7 +169,7 @@ export async function POST(req: Request) {
         : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
 
       const authHeader = 'Basic ' + Buffer.from(serverKey + ':').toString('base64');
-      const tempOrderCode = `BGN-${Date.now()}`;
+      const tempOrderCode = assignedOrderCode;
 
       try {
         const midtransRes = await fetch(snapEndpoint, {
@@ -174,12 +223,14 @@ export async function POST(req: Request) {
       gross_amount: serverGrossAmount,
       redirect_url: redirectUrl,
       expiry_time: expiryIso,
+      order_code: assignedOrderCode,
+      queue_number: assignedQueueNumber,
     });
 
     // 10. Persist to Supabase if configured
     if (isSupabaseConfigured && supabaseAdmin) {
       try {
-        await supabaseAdmin.from('orders').insert({
+        const { error: insErr } = await supabaseAdmin.from('orders').insert({
           id: order.id,
           order_code: order.order_code,
           customer_name: order.customer_name,
@@ -192,6 +243,28 @@ export async function POST(req: Request) {
           order_status: order.order_status,
           queue_number: order.queue_number,
         });
+
+        if (insErr && insErr.code === '23505') {
+          // If collision occurs, increment sequence and retry
+          const retrySeq = seqNum + 1;
+          const retryOrderCode = `BGN-${dateStr}-${String(retrySeq % 10000).padStart(4, '0')}`;
+          const retryQueueNumber = `A-${String(retrySeq % 1000).padStart(3, '0')}`;
+          order.order_code = retryOrderCode;
+          order.queue_number = retryQueueNumber;
+          await supabaseAdmin.from('orders').insert({
+            id: order.id,
+            order_code: retryOrderCode,
+            customer_name: order.customer_name,
+            customer_whatsapp: order.customer_whatsapp,
+            fulfillment_type: 'DELIVERY',
+            campus_location: order.campus_location,
+            location_notes: order.location_notes,
+            scheduled_time: order.scheduled_time,
+            gross_amount: order.gross_amount,
+            order_status: order.order_status,
+            queue_number: retryQueueNumber,
+          });
+        }
 
         // Insert order_items
         if (order.items && order.items.length > 0) {
