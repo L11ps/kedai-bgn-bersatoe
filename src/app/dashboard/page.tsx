@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -41,6 +41,7 @@ type ActiveTab = 'ORDERS' | 'RECAP' | 'SCHEDULE' | 'FINANCE';
 type OrderFilter = {
   campus: 'ALL' | CampusLocation;
   status: 'ALL' | 'WAITING' | 'PROCESSING' | 'DONE';
+  date: string;
 };
 
 const CAMPUS_LABELS: Record<CampusLocation, string> = {
@@ -191,8 +192,8 @@ export default function AdminDashboard() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null);
 
   // Filter state
-  const [filter, setFilter] = useState<OrderFilter>({ campus: 'ALL', status: 'ALL' });
-  const hasFilter = filter.campus !== 'ALL' || filter.status !== 'ALL';
+  const [filter, setFilter] = useState<OrderFilter>({ campus: 'ALL', status: 'ALL', date: 'ALL' });
+  const hasFilter = filter.campus !== 'ALL' || filter.status !== 'ALL' || filter.date !== 'ALL';
 
   // Operational Settings (Holidays & Time Slots)
   const [settings, setSettings] = useState<OperationalSettings>({
@@ -423,6 +424,24 @@ export default function AdminDashboard() {
     }
   };
 
+  // Unique scheduled dates from incoming orders for date filter
+  const orderDates = useMemo(() => {
+    return Array.from(
+      new Set(
+        orders
+          .map((o) => (o.scheduled_time || '').split(' pukul ')[0].trim())
+          .filter(Boolean)
+      )
+    );
+  }, [orders]);
+
+  const DATE_OPTIONS: SelectOption[] = useMemo(() => {
+    return [
+      { value: 'ALL', label: 'Semua Tanggal' },
+      ...orderDates.map((d) => ({ value: d, label: d })),
+    ];
+  }, [orderDates]);
+
   // Filtered orders
   const filteredOrders = orders.filter((o) => {
     if (filter.campus !== 'ALL' && o.campus_location !== filter.campus) return false;
@@ -431,6 +450,10 @@ export default function AdminDashboard() {
       if (filter.status === 'WAITING' && g !== 'WAITING') return false;
       if (filter.status === 'PROCESSING' && g !== 'PROCESSING') return false;
       if (filter.status === 'DONE' && g !== 'DONE') return false;
+    }
+    if (filter.date !== 'ALL') {
+      const orderDate = (o.scheduled_time || '').split(' pukul ')[0].trim();
+      if (orderDate !== filter.date) return false;
     }
     return true;
   });
@@ -584,7 +607,8 @@ export default function AdminDashboard() {
   const handleExportCSV = () => {
     const header = [
       'ID Pesanan',
-      'Waktu',
+      'Waktu Order',
+      'Jadwal Pengantaran',
       'Pembeli',
       'WhatsApp',
       'Kampus',
@@ -611,6 +635,7 @@ export default function AdminDashboard() {
       return [
         o.order_code,
         formatWIB(o.created_at),
+        `"${o.scheduled_time || '-'}"`,
         `"${o.customer_name}"`,
         `"${o.customer_whatsapp}"`,
         `"${o.campus_location}"`,
@@ -662,7 +687,7 @@ export default function AdminDashboard() {
           .map((it) => `${it.quantity}x ${it.product_name}`)
           .join(', ');
         const campus = CAMPUS_LABELS[o.campus_location] || o.campus_location;
-        const notes = [o.location_notes, o.order_notes].filter(Boolean).join(' | ');
+        const notes = [o.scheduled_time ? `Jadwal: ${o.scheduled_time}` : '', o.location_notes, o.order_notes].filter(Boolean).join(' | ');
         const rowBg = idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC';
         const proof = o.delivery_proof_url || o.payments?.[0]?.deeplink_url || null;
 
@@ -937,7 +962,7 @@ export default function AdminDashboard() {
         const notes = o.order_notes ? ` [Catatan: ${o.order_notes}]` : '';
         const pMethod = o.payment_method || o.payments?.[0]?.payment_method || 'CASH';
         const payStatus = pMethod === 'CASH' ? `Tagih Tunai Rp ${o.gross_amount.toLocaleString('id-ID')}` : 'QRIS Lunas';
-        text += `${i + 1}. [${o.queue_number || o.order_code}] ${o.customer_name} (${o.customer_whatsapp}) | Jam ${o.scheduled_time.split(' pukul ')[1] || o.scheduled_time} | Titik: ${o.location_notes || '-'} | Menu: ${items}${notes} | ${payStatus}\n`;
+        text += `${i + 1}. [${o.queue_number || o.order_code}] ${o.customer_name} (${o.customer_whatsapp}) | Jadwal: ${o.scheduled_time} | Titik: ${o.location_notes || '-'} | Menu: ${items}${notes} | ${payStatus}\n`;
       });
     }
     text += `\n📍 *KAMPUS C MINANGKABAU (${minangkabauRecapOrders.length} antaran):*\n`;
@@ -949,7 +974,7 @@ export default function AdminDashboard() {
         const notes = o.order_notes ? ` [Catatan: ${o.order_notes}]` : '';
         const pMethod = o.payment_method || o.payments?.[0]?.payment_method || 'CASH';
         const payStatus = pMethod === 'CASH' ? `Tagih Tunai Rp ${o.gross_amount.toLocaleString('id-ID')}` : 'QRIS Lunas';
-        text += `${i + 1}. [${o.queue_number || o.order_code}] ${o.customer_name} (${o.customer_whatsapp}) | Jam ${o.scheduled_time.split(' pukul ')[1] || o.scheduled_time} | Titik: ${o.location_notes || '-'} | Menu: ${items}${notes} | ${payStatus}\n`;
+        text += `${i + 1}. [${o.queue_number || o.order_code}] ${o.customer_name} (${o.customer_whatsapp}) | Jadwal: ${o.scheduled_time} | Titik: ${o.location_notes || '-'} | Menu: ${items}${notes} | ${payStatus}\n`;
       });
     }
     text += `\nSemangat tim Kedai BGN Bersatoe! Siapkan pesanan tepat waktu & amanah.`;
@@ -1081,7 +1106,14 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <CustomSelect
+                  value={filter.date}
+                  onChange={(v) =>
+                    setFilter((f) => ({ ...f, date: v }))
+                  }
+                  options={DATE_OPTIONS}
+                />
                 <CustomSelect
                   value={filter.status}
                   onChange={(v) =>
@@ -1115,7 +1147,7 @@ export default function AdminDashboard() {
                 {hasFilter && (
                   <button
                     type="button"
-                    onClick={() => setFilter({ campus: 'ALL', status: 'ALL' })}
+                    onClick={() => setFilter({ campus: 'ALL', status: 'ALL', date: 'ALL' })}
                     className="h-9 px-2.5 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1 transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -1156,6 +1188,11 @@ export default function AdminDashboard() {
                         const phone = formatTo62Phone(order.customer_whatsapp);
                         const campusShort =
                           CAMPUS_LABELS[order.campus_location] || order.campus_location;
+
+                        // Parse scheduled_time (contoh: "Selasa, 17 Nov 2026 pukul 10:00 WIB")
+                        const [schedDate, schedTime] = (order.scheduled_time || '').split(' pukul ');
+                        const displayDate = schedDate || order.scheduled_time || '-';
+                        const displayTime = schedTime || '';
 
                         // Pre-filled WhatsApp notification message
                         const waMessage = `Halo kak ${order.customer_name}! Pesanan Kedai BGN kamu (${order.order_code}) sudah hampir sampai nih di titik temu ${campusShort} (${order.location_notes || '-'}). Siap-siap untuk ambil yaa! Terima kasih.`;
@@ -1212,7 +1249,11 @@ export default function AdminDashboard() {
 
                             {/* Kolom 2: Pengantaran & Titik Temu */}
                             <td className="px-3 py-3">
-                              <div className="flex flex-wrap items-center gap-1.5">
+                              <div className="flex items-center gap-1.5 text-xs font-bold text-[#0F2547]">
+                                <Calendar className="w-3.5 h-3.5 text-[#D4A843] shrink-0" />
+                                <span>{displayDate}</span>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                                 <span
                                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                                     CAMPUS_COLORS[order.campus_location] ||
@@ -1222,14 +1263,16 @@ export default function AdminDashboard() {
                                   <MapPin className="w-2.5 h-2.5" />
                                   {campusShort}
                                 </span>
-                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-                                  <Clock className="w-2.5 h-2.5 text-[#0F2547]" />
-                                  <span>{order.scheduled_time.split(' pukul ')[1] || order.scheduled_time}</span>
-                                </span>
+                                {displayTime && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                    <Clock className="w-2.5 h-2.5 text-[#0F2547]" />
+                                    <span>{displayTime}</span>
+                                  </span>
+                                )}
                               </div>
                               <div className="text-[11px] text-slate-700 font-medium mt-1 leading-snug">
                                 <span className="text-slate-400">Titik: </span>
-                                <span>{order.location_notes || '-'}</span>
+                                <span className="font-semibold text-slate-800">{order.location_notes || '-'}</span>
                               </div>
                               {order.order_notes && (
                                 <div className="mt-1 text-[10px] text-amber-800 bg-amber-50 rounded-md px-1.5 py-0.5 border border-amber-200/60 leading-tight">
@@ -1496,9 +1539,9 @@ export default function AdminDashboard() {
                             <span className="font-mono font-black text-xs text-[#0F2547]">
                               #{idx + 1} [{o.queue_number || o.order_code}]
                             </span>
-                            <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-[#0F2547]" />
-                              {o.scheduled_time.split(' pukul ')[1] || o.scheduled_time}
+                            <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-[#D4A843]" />
+                              {o.scheduled_time}
                             </span>
                           </div>
 
@@ -1579,9 +1622,9 @@ export default function AdminDashboard() {
                             <span className="font-mono font-black text-xs text-[#0F2547]">
                               #{idx + 1} [{o.queue_number || o.order_code}]
                             </span>
-                            <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-[#0F2547]" />
-                              {o.scheduled_time.split(' pukul ')[1] || o.scheduled_time}
+                            <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-[#D4A843]" />
+                              {o.scheduled_time}
                             </span>
                           </div>
 
@@ -1940,6 +1983,12 @@ export default function AdminDashboard() {
                               <div className="text-[10px] text-slate-400 mt-0.5">
                                 {formatWIB(o.created_at)}
                               </div>
+                              {o.scheduled_time && (
+                                <div className="text-[10px] font-semibold text-slate-600 flex items-center gap-1 mt-1">
+                                  <Calendar className="w-2.5 h-2.5 text-[#D4A843]" />
+                                  <span className="truncate">{o.scheduled_time}</span>
+                                </div>
+                              )}
                             </td>
 
                             <td className="px-3 py-3 align-top">
