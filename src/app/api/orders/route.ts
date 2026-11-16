@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import {
   getAllOrders,
   updateOrderStatusInMemory,
+  upsertOrderInMemory,
   getPaymentByOrderId,
   clearAllOrdersInMemory,
 } from '@/lib/order-store';
@@ -116,7 +117,8 @@ export async function PATCH(req: Request) {
         const buffer = matches
           ? Buffer.from(matches[2], 'base64')
           : Buffer.from(proofBase64, 'base64');
-        const fileName = `proof-${orderId}-${Date.now()}.jpg`;
+        const safeOrderId = String(orderId).replace(/[^a-zA-Z0-9_-]/g, '');
+        const fileName = `proof-${safeOrderId}-${Date.now()}.jpg`;
 
         const { error: uploadError } = await supabaseAdmin.storage
           .from('proofs')
@@ -142,27 +144,64 @@ export async function PATCH(req: Request) {
       savedProofUrl = proofBase64;
     }
 
-    const order = updateOrderStatusInMemory(orderId, newStatus, savedProofUrl);
-    if (!order) {
+    // 1. Look up existing order in Supabase
+    let orderToUpdate: any = null;
+    let paymentRecord: any = null;
+
+    if (isSupabaseConfigured && supabaseAdmin) {
+      try {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId);
+        let query = supabaseAdmin
+          .from('orders')
+          .select(`
+            *,
+            items:order_items(*),
+            payments(*)
+          `);
+
+        if (isUuid) {
+          query = query.eq('id', orderId);
+        } else {
+          query = query.eq('order_code', orderId);
+        }
+
+        const { data: dbOrders, error: findErr } = await query.limit(1);
+        if (!findErr && dbOrders && dbOrders.length > 0) {
+          orderToUpdate = dbOrders[0];
+          const payments = Array.isArray(orderToUpdate.payments) ? orderToUpdate.payments : [];
+          paymentRecord = payments.length > 0 ? payments[0] : null;
+        }
+      } catch (findErr) {
+        console.warn('[Supabase Order Lookup Error]:', findErr);
+      }
+    }
+
+    // 2. Also check in-memory store
+    const memOrder = updateOrderStatusInMemory(orderId, newStatus, savedProofUrl);
+
+    // If not found in Supabase and not in memory, return 404
+    if (!orderToUpdate && !memOrder) {
       return NextResponse.json(
-        { success: false, message: 'Order not found' },
+        { success: false, message: 'Pesanan tidak ditemukan' },
         { status: 404 }
       );
     }
 
-    if (isSupabaseConfigured && supabaseAdmin) {
+    // 3. Update Supabase order and payment records
+    if (orderToUpdate && isSupabaseConfigured && supabaseAdmin) {
       try {
         const updatePayload: Record<string, unknown> = {
           order_status: newStatus,
           updated_at: new Date().toISOString(),
         };
-        if (order.queue_number) {
-          updatePayload.queue_number = order.queue_number;
+        if (memOrder?.queue_number || orderToUpdate.queue_number) {
+          updatePayload.queue_number = memOrder?.queue_number || orderToUpdate.queue_number;
         }
+
         await supabaseAdmin
           .from('orders')
           .update(updatePayload)
-          .eq('id', order.id);
+          .eq('id', orderToUpdate.id);
 
         if (['PAID', 'COOKING', 'READY_FOR_DELIVERY', 'COMPLETED'].includes(newStatus) || savedProofUrl) {
           const payPayload: Record<string, unknown> = {
@@ -172,23 +211,23 @@ export async function PATCH(req: Request) {
           if (savedProofUrl) {
             payPayload.deeplink_url = savedProofUrl;
           }
-          const { data: updatedPay } = await supabaseAdmin
-            .from('payments')
-            .update(payPayload)
-            .eq('order_id', order.id)
-            .select();
 
-          if (!updatedPay || updatedPay.length === 0) {
+          if (paymentRecord) {
+            await supabaseAdmin
+              .from('payments')
+              .update(payPayload)
+              .eq('id', paymentRecord.id);
+          } else {
             await supabaseAdmin.from('payments').insert({
               id: crypto.randomUUID(),
-              order_id: order.id,
-              gateway_reference_id: `CASH-${order.order_code}`,
-              payment_method: order.payment_method || 'CASH',
+              order_id: orderToUpdate.id,
+              gateway_reference_id: `CASH-${orderToUpdate.order_code}`,
+              payment_method: orderToUpdate.payment_method || 'CASH',
               payment_status: 'SETTLEMENT',
-              gross_amount: order.gross_amount,
+              gross_amount: orderToUpdate.gross_amount,
               mdr_percentage: 0,
               mdr_fee_amount: 0,
-              net_revenue: order.gross_amount,
+              net_revenue: orderToUpdate.gross_amount,
               deeplink_url: savedProofUrl || null,
               paid_at: new Date().toISOString(),
             });
@@ -199,30 +238,35 @@ export async function PATCH(req: Request) {
       }
     }
 
-    // Trigger WhatsApp notification to customer if status ready
+    const finalOrder = {
+      ...(orderToUpdate || memOrder),
+      order_status: newStatus,
+      delivery_proof_url: savedProofUrl || orderToUpdate?.delivery_proof_url || memOrder?.delivery_proof_url,
+      payment_method: orderToUpdate?.payment_method || paymentRecord?.payment_method || memOrder?.payment_method || 'CASH',
+    };
+
+    upsertOrderInMemory(finalOrder, paymentRecord);
+
+    // 4. Trigger WhatsApp notification to customer if status ready
     if (newStatus === 'READY_FOR_DELIVERY') {
-      sendOrderReadyNotification(order).catch((err) =>
+      sendOrderReadyNotification(finalOrder).catch((err) =>
         console.error('Failed to send WhatsApp Ready notification:', err)
       );
     }
 
-    // Update Column 10 in Google Sheets when completed
+    // 5. Update Column 10 in Google Sheets when completed
     if (newStatus === 'COMPLETED') {
-      const payment = getPaymentByOrderId(order.id);
+      const payment = getPaymentByOrderId(finalOrder.id) || paymentRecord;
       const rowNumber = payment?.sheet_row_number || 2;
-      updateGoogleSheetOrderStatus(rowNumber, order.order_code, 'Selesai').catch((err) =>
+      updateGoogleSheetOrderStatus(rowNumber, finalOrder.order_code, 'Selesai').catch((err) =>
         console.error('Failed to update Google Sheets order status:', err)
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: `Order status updated to ${newStatus}`,
-      order: {
-        ...order,
-        delivery_proof_url: savedProofUrl || order.delivery_proof_url,
-        payment_method: order.payment_method || 'CASH',
-      },
+      message: `Status pesanan berhasil diperbarui menjadi ${newStatus}`,
+      order: finalOrder,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

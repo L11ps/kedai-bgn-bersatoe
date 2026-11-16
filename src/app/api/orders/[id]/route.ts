@@ -18,15 +18,22 @@ export async function GET(
 
     if (isSupabaseConfigured && supabaseAdmin) {
       try {
-        const { data, error } = await supabaseAdmin
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+        let query = supabaseAdmin
           .from('orders')
           .select(`
             *,
             items:order_items(*),
             payments(*)
-          `)
-          .or(`id.eq.${id},order_code.eq.${id}`)
-          .single();
+          `);
+
+        if (isUuid) {
+          query = query.eq('id', id);
+        } else {
+          query = query.eq('order_code', id);
+        }
+
+        const { data, error } = await query.maybeSingle();
 
         if (!error && data) {
           order = data;
@@ -118,9 +125,22 @@ export async function DELETE(
     // 2. Delete from Supabase if active
     if (isSupabaseConfigured && supabaseAdmin) {
       try {
-        await supabaseAdmin.from('payments').delete().or(`order_id.eq.${id}`);
-        await supabaseAdmin.from('order_items').delete().or(`order_id.eq.${id}`);
-        await supabaseAdmin.from('orders').delete().or(`id.eq.${id},order_code.eq.${id}`);
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+        let targetOrderId = id;
+        if (!isUuid) {
+          const { data: found } = await supabaseAdmin
+            .from('orders')
+            .select('id')
+            .eq('order_code', id)
+            .limit(1);
+          if (found && found.length > 0) {
+            targetOrderId = found[0].id;
+          }
+        }
+
+        await supabaseAdmin.from('payments').delete().eq('order_id', targetOrderId);
+        await supabaseAdmin.from('order_items').delete().eq('order_id', targetOrderId);
+        await supabaseAdmin.from('orders').delete().eq('id', targetOrderId);
       } catch (dbErr) {
         console.warn('[Supabase Order Delete Error]:', dbErr);
       }

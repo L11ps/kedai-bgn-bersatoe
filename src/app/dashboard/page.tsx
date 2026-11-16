@@ -546,7 +546,11 @@ export default function AdminDashboard() {
       };
 
       setOrders((prev) =>
-        prev.map((o) => (o.id === orderForProof.id ? { ...o, ...updatedOrder } : o))
+        prev.map((o) =>
+          o.id === orderForProof.id || o.order_code === orderForProof.order_code
+            ? { ...o, ...updatedOrder }
+            : o
+        )
       );
 
       if (typeof window !== 'undefined') {
@@ -556,7 +560,9 @@ export default function AdminDashboard() {
             localStorage.getItem('bgn_recent_orders') || '[]'
           );
           const nextCached = cached.map((o) =>
-            o.id === orderForProof.id ? { ...o, ...updatedOrder } : o
+            o.id === orderForProof.id || o.order_code === orderForProof.order_code
+              ? { ...o, ...updatedOrder }
+              : o
           );
           localStorage.setItem('bgn_recent_orders', JSON.stringify(nextCached));
         } catch {
