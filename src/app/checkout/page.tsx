@@ -470,34 +470,43 @@ export default function CheckoutPage() {
               <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-200/60 text-[11px] text-blue-900 space-y-1">
                 <div className="flex items-center gap-1.5 font-bold">
                   <AlertCircle className="w-3.5 h-3.5 text-blue-700 shrink-0" />
-                  <span>Rekomendasi Pembayaran</span>
+                  <span>Informasi Metode Pembayaran</span>
                 </div>
                 <p className="text-slate-600 leading-relaxed">
-                  Pilih <strong>Tunai di Tempat (CASH)</strong> untuk pesanan langsung diproses tanpa kendala dan bayar uang pas saat kurir tiba di titik kumpul kampus.
+                  Pilih <strong>QRIS</strong> untuk pembayaran non tunai langsung (scan QR dan kirim bukti via WhatsApp), atau pilih <strong>Tunai di Tempat (CASH)</strong> untuk membayar uang pas saat pesanan diantar ke titik kumpul kampus.
                 </p>
               </div>
 
-              {/* Option 1: QRIS Midtrans (Dalam Maintenance - Tidak Bisa Di Klik) */}
-              <div
-                aria-disabled="true"
-                className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/80 flex items-start gap-3 opacity-60 cursor-not-allowed select-none transition-all"
-                title="Metode pembayaran QRIS sedang dalam maintenance"
+              {/* Option 1: QRIS Statis */}
+              <label
+                onClick={() => setPaymentMethod('QRIS')}
+                className={`p-3.5 rounded-2xl border flex items-start gap-3 cursor-pointer transition-all ${
+                  paymentMethod === 'QRIS'
+                    ? 'bg-[#0F2547]/5 border-[#0F2547] ring-2 ring-[#D4A843]/40'
+                    : 'bg-white border-slate-200 hover:bg-slate-50'
+                }`}
               >
-                <div className="w-4 h-4 rounded-full border-2 border-slate-300 mt-0.5 flex items-center justify-center shrink-0 bg-slate-200" />
+                <div
+                  className={`w-4 h-4 rounded-full border-2 mt-0.5 flex items-center justify-center shrink-0 ${
+                    paymentMethod === 'QRIS' ? 'border-[#0F2547] bg-[#0F2547]' : 'border-slate-300'
+                  }`}
+                >
+                  {paymentMethod === 'QRIS' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-extrabold text-xs text-slate-500">
-                      QRIS / E-Wallet (Midtrans)
+                    <span className="font-extrabold text-xs text-slate-900">
+                      QRIS (BCA, Mandiri, GoPay, OVO, Dana, dll)
                     </span>
-                    <span className="text-[10px] font-black uppercase text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300 shrink-0">
-                      Dalam Maintenance
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                      Scan &amp; Kirim Bukti WA
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Layanan pembayaran QRIS sedang dalam proses pemeliharaan. Silakan gunakan metode pembayaran Tunai di Tempat (CASH).
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Scan kode QRIS setelah checkout, lalu kirimkan tangkapan layar bukti transfer ke WhatsApp admin agar pesanan langsung diproses.
                   </p>
                 </div>
-              </div>
+              </label>
 
               {/* Option 2: CASH (COD) */}
               <label
@@ -573,7 +582,7 @@ export default function CheckoutPage() {
                   <span>
                     {paymentMethod === 'CASH'
                       ? 'Konfirmasi Pesanan (Bayar Tunai)'
-                      : `Bayar ${formatIDR(subtotal)} via Midtrans`}
+                      : `Lanjut Pembayaran QRIS (${formatIDR(subtotal)})`}
                   </span>
                 </>
               )}

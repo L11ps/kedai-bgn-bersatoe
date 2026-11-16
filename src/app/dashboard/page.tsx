@@ -66,7 +66,7 @@ function getStatusGroup(status: OrderStatus | string): 'WAITING' | 'PROCESSING' 
 
 function statusLabel(status: OrderStatus | string, paymentMethod: string): string {
   if (status === 'WAITING_PAYMENT' || status === 'PENDING') {
-    return paymentMethod === 'CASH' ? 'Menunggu Bayar (CASH)' : 'Menunggu Bayar';
+    return paymentMethod === 'CASH' ? 'Menunggu Bayar (CASH)' : 'Menunggu Bayar (QRIS)';
   }
   switch (status) {
     case 'PAID':
@@ -1279,17 +1279,17 @@ export default function AdminDashboard() {
                                     <Camera className="w-2.5 h-2.5 text-emerald-600" />
                                     <span>Bukti Foto</span>
                                   </button>
-                                ) : isCashOrder ? (
+                                ) : (
                                   <button
                                     type="button"
                                     onClick={() => handleOpenProofModal(order)}
                                     className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 text-[9px] font-bold transition-colors cursor-pointer"
-                                    title="Upload Foto Bukti Serah Terima Makanan & Pembayaran Cash"
+                                    title="Upload Foto Bukti Serah Terima Makanan / Screenshot QRIS"
                                   >
                                     <Upload className="w-2.5 h-2.5 text-amber-600" />
                                     <span>+ Bukti Foto</span>
                                   </button>
-                                ) : null}
+                                )}
                               </div>
                             </td>
 
@@ -1301,17 +1301,17 @@ export default function AdminDashboard() {
                                     {statusLabel(order.order_status, pMethod)}
                                   </span>
 
-                                  {/* Khusus COD / CASH yang Menunggu Bayar: Wajib Upload Bukti Foto */}
-                                  {isCashOrder && isWaitingOrPending ? (
+                                  {/* Pesanan Menunggu Bayar (CASH & QRIS): Konfirmasi & Upload Bukti Foto */}
+                                  {isWaitingOrPending ? (
                                     <div>
                                       <button
                                         type="button"
                                         onClick={() => handleOpenProofModal(order)}
                                         className="h-7 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold flex items-center gap-1 transition-all shadow-xs active:scale-95"
-                                        title="Konfirmasi Lunas & Upload Foto Serah Terima"
+                                        title={isCashOrder ? 'Konfirmasi Lunas & Upload Foto Serah Terima' : 'Verifikasi Pembayaran & Upload Screenshot QRIS'}
                                       >
                                         <Camera className="w-3 h-3 text-white" />
-                                        <span>Konfirmasi Lunas</span>
+                                        <span>{isCashOrder ? 'Konfirmasi Lunas' : 'Verifikasi QRIS'}</span>
                                       </button>
                                     </div>
                                   ) : next ? (
@@ -2151,10 +2151,14 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-base text-slate-900">
-                    Konfirmasi Serah Terima &amp; Pelunasan COD
+                    {orderForProof.payment_method === 'CASH'
+                      ? 'Konfirmasi Serah Terima & Pelunasan COD'
+                      : 'Verifikasi Pembayaran & Bukti Transfer QRIS'}
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Wajib foto bukti pembeli menerima makanan dan menyerahkan uang tunai
+                    {orderForProof.payment_method === 'CASH'
+                      ? 'Wajib foto bukti pembeli menerima makanan dan menyerahkan uang tunai'
+                      : 'Unggah screenshot bukti transfer QRIS yang dikirimkan pemesan via WhatsApp'}
                   </p>
                 </div>
               </div>
@@ -2172,7 +2176,9 @@ export default function AdminDashboard() {
                   </span>
                 </div>
                 <div className="flex justify-between pt-1 border-t border-slate-200">
-                  <span className="font-bold text-slate-700">Total Uang Tunai Diterima:</span>
+                  <span className="font-bold text-slate-700">
+                    {orderForProof.payment_method === 'CASH' ? 'Total Uang Tunai Diterima:' : 'Total Tagihan QRIS:'}
+                  </span>
                   <span className="font-black text-sm text-[#0F2547]">{formatIDR(orderForProof.gross_amount)}</span>
                 </div>
               </div>
@@ -2212,10 +2218,14 @@ export default function AdminDashboard() {
                     </div>
                     <div>
                       <p className="text-xs font-bold text-slate-800">
-                        Klik untuk Ambil Foto dari Kamera atau Pilih File
+                        {orderForProof.payment_method === 'CASH'
+                          ? 'Klik untuk Ambil Foto dari Kamera atau Pilih File'
+                          : 'Klik untuk Unggah Screenshot Bukti QRIS'}
                       </p>
                       <p className="text-[11px] text-slate-400 mt-0.5">
-                        Foto makanan yang diterima pembeli sebagai bukti fisik serah terima
+                        {orderForProof.payment_method === 'CASH'
+                          ? 'Foto makanan yang diterima pembeli sebagai bukti fisik serah terima'
+                          : 'Tangkapan layar bukti pembayaran yang dikirimkan pemesan melalui WhatsApp'}
                       </p>
                     </div>
                     <input

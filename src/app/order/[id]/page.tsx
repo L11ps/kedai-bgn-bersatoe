@@ -16,6 +16,8 @@ import {
   Zap,
   Banknote,
   MessageCircle,
+  Download,
+  QrCode,
 } from 'lucide-react';
 import { Order, Payment } from '@/types';
 import { formatIDR } from '@/lib/formatters';
@@ -72,6 +74,7 @@ export default function OrderTrackingPage({
   const [timeLeft, setTimeLeft] = useState<number>(15 * 60);
   const [isSimulating, setIsSimulating] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedNominal, setCopiedNominal] = useState(false);
 
   // Fetch Order
   const fetchOrder = async () => {
@@ -260,77 +263,136 @@ export default function OrderTrackingPage({
         </header>
 
         <div className="p-4 space-y-6 flex-1">
-          {/* CASE A: WAITING_PAYMENT (QRIS / Midtrans Online) */}
+          {/* CASE A: WAITING_PAYMENT (QRIS Statis Online) */}
           {isWaitingPayment && !isCash ? (
-            <div className="space-y-5">
-              {/* Expiry Countdown Box */}
-              <div className="bg-amber-500 text-white rounded-3xl p-4 shadow-lg shadow-amber-500/20 text-center space-y-1">
-                <span className="text-[11px] uppercase tracking-wider font-bold opacity-90 block">
-                  Batas Waktu Pembayaran
-                </span>
-                <div className="text-3xl font-black tracking-tight flex items-center justify-center gap-2">
-                  <Clock className="w-7 h-7 text-amber-100" />
-                  <span>{formatTimer(timeLeft)}</span>
-                </div>
-                <p className="text-[11px] text-amber-100">
-                  Selesaikan pembayaran sebelum batas waktu habis.
-                </p>
-              </div>
-
-              {/* Midtrans / QRIS Display Card */}
+            <div className="space-y-4">
+              {/* Highlight Card QRIS */}
               <div className="bg-white rounded-3xl p-5 border-2 border-[#0F2547]/20 shadow-md text-center space-y-4">
-                <div className="inline-block px-3 py-1 rounded-full bg-[#0F2547] text-[#D4A843] border border-[#D4A843]/40 font-bold text-xs">
-                  Pembayaran Online Midtrans
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0F2547] text-[#D4A843] border border-[#D4A843]/40 font-bold text-xs">
+                  <QrCode className="w-3.5 h-3.5" />
+                  <span>Pembayaran QRIS Statis</span>
                 </div>
 
                 <div>
                   <span className="text-xs text-slate-400 block font-medium">Total Tagihan</span>
-                  <span className="text-2xl font-black text-slate-900">
-                    {formatIDR(order.gross_amount)}
-                  </span>
+                  <div className="flex items-center justify-center gap-2 mt-0.5">
+                    <span className="text-3xl font-black text-[#0F2547]">
+                      {formatIDR(order.gross_amount)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(String(order.gross_amount));
+                        setCopiedNominal(true);
+                        setTimeout(() => setCopiedNominal(false), 2000);
+                      }}
+                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs transition-colors"
+                      title="Salin Angka Tagihan"
+                    >
+                      {copiedNominal ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Transfer dengan nominal pas sesuai angka di atas
+                  </p>
                 </div>
 
-                {/* Embedded Midtrans Payment Frame (QR Langsung di Web) */}
-                {payment?.deeplink_url ? (
-                  <div className="space-y-3 pt-1">
-                    <p className="text-xs text-slate-600 font-semibold">
-                      Silakan scan kode QRIS langsung di bawah ini:
-                    </p>
-                    <div className="relative w-full rounded-2xl border-2 border-slate-200 overflow-hidden shadow-sm bg-slate-50 flex items-center justify-center">
-                      <iframe
-                        src={payment.deeplink_url}
-                        className="w-full border-0"
-                        style={{ height: '580px', minHeight: '520px' }}
-                        title="Midtrans QRIS Payment"
-                        allow="payment"
-                      />
-                    </div>
+                {/* QR Code Image */}
+                <div className="space-y-3 pt-1">
+                  <p className="text-xs text-slate-700 font-bold">
+                    Scan barcode QRIS di bawah ini dengan m-Banking atau E-Wallet:
+                  </p>
+                  <div className="relative w-full max-w-[280px] mx-auto p-2 bg-white rounded-2xl border-2 border-slate-200 shadow-inner flex items-center justify-center overflow-hidden">
+                    <img
+                      src="/images/qris-statis.jpeg"
+                      alt="Barcode QRIS Kedai BGN Bersatoe"
+                      className="w-full h-auto object-contain rounded-xl"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 pt-1">
                     <a
-                      href={payment.deeplink_url}
+                      href="/images/qris-statis.jpeg"
+                      download="QRIS-Kedai-BGN.jpeg"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-300 transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Unduh QRIS</span>
+                    </a>
+                    <a
+                      href="/images/qris-statis.jpeg"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex min-h-[38px] w-full items-center justify-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-300 transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-300 transition-colors"
                     >
-                      <span>Buka di Tab Baru jika Tampilan Terpotong</span>
-                      <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                      <ExternalLink className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Perbesar Gambar</span>
                     </a>
                   </div>
-                ) : payment?.qr_string ? (
-                  <div className="pt-2">
-                    <p className="text-[11px] text-slate-500 mb-2">
-                      Scan QRIS di bawah ini dengan m-Banking / e-Wallet apa saja:
-                    </p>
-                    <div className="relative w-56 h-56 mx-auto p-2 bg-white rounded-2xl border border-slate-200 shadow-inner flex items-center justify-center">
-                      <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
-                          payment.qr_string
-                        )}`}
-                        alt="QRIS Barcode"
-                        className="w-48 h-48 mx-auto object-contain"
-                      />
-                    </div>
+                </div>
+
+                {/* Langkah-langkah Pembayaran */}
+                <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200 text-left space-y-2 text-xs">
+                  <div className="font-extrabold text-slate-900 flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+                    <span className="w-2 h-2 rounded-full bg-[#D4A843]" />
+                    <span>Langkah Pembayaran &amp; Konfirmasi:</span>
                   </div>
-                ) : null}
+                  <ol className="space-y-1.5 list-decimal list-inside text-[11px] text-slate-600 leading-relaxed font-medium">
+                    <li>Buka aplikasi m-Banking (BCA, Mandiri, BRI, BNI) atau E-Wallet (GoPay, OVO, DANA, ShopeePay).</li>
+                    <li>Pilih menu <strong>Scan / QRIS</strong>, lalu scan barcode di atas atau ambil dari galeri.</li>
+                    <li>Selesaikan pembayaran sebesar <strong>{formatIDR(order.gross_amount)}</strong>.</li>
+                    <li>Simpan tangkapan layar (screenshot) bukti pembayaran berhasil.</li>
+                    <li>Klik tombol hijau di bawah untuk mengirim bukti screenshot ke WhatsApp Admin.</li>
+                  </ol>
+                </div>
+
+                {/* Tombol WhatsApp Konfirmasi Pembayaran */}
+                {(() => {
+                  const itemsListText = (order.items || [])
+                    .map((it) => `• ${it.quantity}x ${it.product_name}`)
+                    .join('\n');
+                  const waQrisText = `Halo Admin Kedai BGN Bersatoe! Saya ingin konfirmasi pembayaran QRIS:
+
+Kode Pesanan: ${order.order_code}
+Nomor Antrean: ${order.queue_number || '-'}
+Nama Pemesan: ${order.customer_name}
+Nomor WhatsApp: ${order.customer_whatsapp}
+Kampus Tujuan: ${order.campus_location}
+Titik Temu: ${order.location_notes || '-'}
+Jadwal Pengantaran: ${order.scheduled_time}
+
+Rincian Pesanan:
+${itemsListText}
+
+Total Pembayaran: ${formatIDR(order.gross_amount)}
+
+Berikut saya lampirkan tangkapan layar (screenshot) bukti pembayaran QRIS. Mohon diverifikasi agar pesanan segera diproses. Terima kasih!`;
+
+                  return (
+                    <a
+                      href={`https://wa.me/6281935281705?text=${encodeURIComponent(waQrisText)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full min-h-[50px] px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white flex items-center justify-center gap-2 font-black text-xs sm:text-sm shadow-lg shadow-emerald-600/30 transition-all text-center"
+                    >
+                      <MessageCircle className="w-5 h-5 shrink-0" />
+                      <span>Kirim Bukti Pembayaran ke WhatsApp</span>
+                    </a>
+                  );
+                })()}
+
+                <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200/80 text-[11px] text-amber-900 text-center space-y-0.5">
+                  <p className="font-bold">
+                    Pesanan otomatis diproses setelah bukti diverifikasi admin.
+                  </p>
+                  <p className="text-amber-700 text-[10px]">
+                    Halaman ini akan otomatis diperbarui begitu admin mengonfirmasi pembayaran Anda.
+                  </p>
+                </div>
               </div>
             </div>
           ) : isExpired ? (
@@ -465,7 +527,7 @@ export default function OrderTrackingPage({
               <div className="flex justify-between">
                 <span className="text-slate-400">Metode Bayar:</span>
                 <span className="font-bold text-slate-800">
-                  {order.payment_method === 'CASH' ? 'Tunai di Tempat (CASH)' : 'Online QRIS (Midtrans)'}
+                  {order.payment_method === 'CASH' ? 'Tunai di Tempat (CASH)' : 'QRIS (Transfer / E-Wallet)'}
                 </span>
               </div>
               <div className="flex justify-between">

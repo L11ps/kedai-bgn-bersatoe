@@ -160,53 +160,9 @@ export async function POST(req: Request) {
     let redirectUrl: string | undefined = undefined;
     let snapToken: string | undefined = undefined;
 
-    // 8. If QRIS, Call Real Midtrans Snap API
+    // 8. Static QRIS Payment Handling (Midtrans di-hold sementara proses pengajuan)
     if (paymentMethod === 'QRIS') {
-      const serverKey = process.env.MIDTRANS_SERVER_KEY || 'Mid-server-4RfU8KEF~CpMJ_FH0NdS-RR5';
-      const isProduction = !serverKey.startsWith('SB-');
-      const snapEndpoint = isProduction
-        ? 'https://app.midtrans.com/snap/v1/transactions'
-        : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
-
-      const authHeader = 'Basic ' + Buffer.from(serverKey + ':').toString('base64');
-      const tempOrderCode = assignedOrderCode;
-
-      try {
-        const midtransRes = await fetch(snapEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            Authorization: authHeader,
-          },
-          body: JSON.stringify({
-            transaction_details: {
-              order_id: tempOrderCode,
-              gross_amount: serverGrossAmount,
-            },
-            customer_details: {
-              first_name: body.customer_name.trim(),
-              phone: phoneClean,
-            },
-            item_details: validatedCartItems.map((it) => ({
-              id: it.product_id,
-              price: it.price,
-              quantity: it.quantity,
-              name: it.name.slice(0, 50),
-            })),
-          }),
-        });
-
-        const midtransData = await midtransRes.json();
-        if (midtransRes.ok && midtransData.token) {
-          snapToken = midtransData.token;
-          redirectUrl = midtransData.redirect_url;
-        } else {
-          console.warn('[Midtrans API Warning]:', midtransData);
-        }
-      } catch (midtransErr) {
-        console.error('[Midtrans API Error]:', midtransErr);
-      }
+      redirectUrl = '/images/qris-statis.jpeg';
     }
 
     // 9. Create Order in Memory Store
@@ -305,37 +261,37 @@ export async function POST(req: Request) {
       }
     }
 
-    // 11. If CASH, auto-sync to Google Sheets and notify WhatsApp immediately
+    // 11. Auto-sync to Google Sheets and notify WhatsApp group
+    const itemsSummary = validatedCartItems
+      .map((it) => `${it.quantity}x ${it.name}`)
+      .join('; ');
+
+    const sheetRowData = {
+      transaction_id: order.order_code,
+      timestamp_wib: formatWIB(new Date().toISOString()),
+      customer_name: order.customer_name,
+      contact: formatTo62Phone(order.customer_whatsapp),
+      items_summary: itemsSummary,
+      gross_amount_formatted: formatIDR(order.gross_amount),
+      payment_method: paymentMethod === 'CASH' ? 'CASH (Tunai di Tempat)' : 'QRIS (Statis - Menunggu Konfirmasi WA)',
+      mdr_fee_formatted: formatIDR(0),
+      net_revenue_formatted: formatIDR(order.gross_amount),
+      order_status: paymentMethod === 'CASH' ? 'Menunggu Pengantaran (CASH)' : 'Menunggu Verifikasi Pembayaran (QRIS)',
+    };
+
+    appendToGoogleSheet(sheetRowData).catch((err) =>
+      console.error('[Google Sheet Sync Error]:', err)
+    );
+
     if (paymentMethod === 'CASH') {
-      const itemsSummary = validatedCartItems
-        .map((it) => `${it.quantity}x ${it.name}`)
-        .join('; ');
-
-      const sheetRowData = {
-        transaction_id: order.order_code,
-        timestamp_wib: formatWIB(new Date().toISOString()),
-        customer_name: order.customer_name,
-        contact: formatTo62Phone(order.customer_whatsapp),
-        items_summary: itemsSummary,
-        gross_amount_formatted: formatIDR(order.gross_amount),
-        payment_method: 'CASH (Tunai di Tempat)',
-        mdr_fee_formatted: formatIDR(0),
-        net_revenue_formatted: formatIDR(order.gross_amount),
-        order_status: 'Menunggu Pengantaran (CASH)',
-      };
-
-      appendToGoogleSheet(sheetRowData).catch((err) =>
-        console.error('[Google Sheet Sync Error (CASH)]:', err)
-      );
-
       sendOrderPaidNotification(order).catch((err) =>
         console.error('[WhatsApp Notification Error (CASH)]:', err)
       );
-
-      sendOperationalGroupSummary(order).catch((err) =>
-        console.error('[WhatsApp Group Error (CASH)]:', err)
-      );
     }
+
+    sendOperationalGroupSummary(order).catch((err) =>
+      console.error('[WhatsApp Group Error]:', err)
+    );
 
     return NextResponse.json({
       success: true,

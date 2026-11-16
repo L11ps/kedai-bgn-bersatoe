@@ -190,14 +190,15 @@ export function generateKitchenQueueNumber(): string {
   return `A-${numStr}`;
 }
 
-// Calculate MDR & Net Revenue (QRIS standard 0.7%, Cash 0%)
+// Calculate MDR & Net Revenue (QRIS Statis 0%, Cash 0%)
 export function calculateMdrAndNet(grossAmount: number, paymentMethod: PaymentMethod = 'QRIS') {
   if (paymentMethod === 'CASH') {
     return { mdrRate: 0, mdrFee: 0, netRevenue: grossAmount };
   }
-  const mdrRate = 0.7; // 0.7% QRIS standard
-  const mdrFee = Math.round(grossAmount * (mdrRate / 100));
-  const netRevenue = grossAmount - mdrFee;
+  // QRIS Statis langsung tanpa gateway aggregator (0%)
+  const mdrRate = 0;
+  const mdrFee = 0;
+  const netRevenue = grossAmount;
 
   return { mdrRate, mdrFee, netRevenue };
 }
