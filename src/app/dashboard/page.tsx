@@ -31,6 +31,8 @@ import {
   Upload,
   Banknote,
   CheckCircle2,
+  Receipt,
+  Minus,
 } from 'lucide-react';
 import { Order, OrderStatus, Product, CampusLocation, OperationalSettings } from '@/types';
 import { formatIDR, formatWIB, formatTo62Phone } from '@/lib/formatters';
@@ -248,6 +250,108 @@ export default function AdminDashboard() {
 
   // Financial recap filter state
   const [financeFilter, setFinanceFilter] = useState<'ALL' | 'PAID' | 'PENDING'>('ALL');
+
+  // Manual / OTS Order Modal state (Input Pesanan Hari Lampau & OTS)
+  const [manualModalOpen, setManualModalOpen] = useState(false);
+  const [manualDate, setManualDate] = useState(() => {
+    const d = new Date();
+    return d.toISOString().split('T')[0];
+  });
+  const [manualTime, setManualTime] = useState('12:00 WIB');
+  const [manualCampus, setManualCampus] = useState<CampusLocation>('Kampus C Minangkabau');
+  const [manualLocationNotes, setManualLocationNotes] = useState('Penjualan Langsung di Tempat (OTS)');
+  const [manualCustomerName, setManualCustomerName] = useState('Pembeli Langsung (OTS)');
+  const [manualCustomerPhone, setManualCustomerPhone] = useState('');
+  const [manualPaymentMethod, setManualPaymentMethod] = useState<'CASH' | 'QRIS'>('CASH');
+  const [manualItemQuantities, setManualItemQuantities] = useState<Record<string, number>>({});
+  const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+  const [manualError, setManualError] = useState('');
+  const [manualSuccessMsg, setManualSuccessMsg] = useState('');
+
+  const handleOpenManualModal = () => {
+    const d = new Date();
+    setManualDate(d.toISOString().split('T')[0]);
+    setManualTime('12:00 WIB');
+    setManualCampus('Kampus C Minangkabau');
+    setManualLocationNotes('Penjualan Langsung di Tempat (OTS)');
+    setManualCustomerName('Pembeli Langsung (OTS)');
+    setManualCustomerPhone('');
+    setManualPaymentMethod('CASH');
+    const initQtys: Record<string, number> = {};
+    products.forEach((p) => {
+      initQtys[p.id] = 0;
+    });
+    setManualItemQuantities(initQtys);
+    setManualError('');
+    setManualSuccessMsg('');
+    setManualModalOpen(true);
+  };
+
+  const handleUpdateManualItemQty = (prodId: string, delta: number) => {
+    setManualItemQuantities((prev) => {
+      const current = prev[prodId] || 0;
+      const next = Math.max(0, current + delta);
+      return { ...prev, [prodId]: next };
+    });
+  };
+
+  const manualTotalAmount = useMemo(() => {
+    return products.reduce((acc, p) => {
+      const qty = manualItemQuantities[p.id] || 0;
+      return acc + p.price * qty;
+    }, 0);
+  }, [products, manualItemQuantities]);
+
+  const handleSubmitManualOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setManualError('');
+    setManualSuccessMsg('');
+
+    const itemsToSubmit = Object.entries(manualItemQuantities)
+      .filter(([_, qty]) => qty > 0)
+      .map(([productId, qty]) => ({
+        product_id: productId,
+        quantity: qty,
+      }));
+
+    if (itemsToSubmit.length === 0) {
+      setManualError('Pilih minimal 1 porsi menu masakan.');
+      return;
+    }
+
+    setIsSubmittingManual(true);
+    try {
+      const res = await fetch('/api/orders/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transaction_date: manualDate,
+          transaction_time: manualTime,
+          campus_location: manualCampus,
+          location_notes: manualLocationNotes || 'Penjualan Langsung di Tempat (OTS)',
+          customer_name: manualCustomerName || 'Pembeli Langsung (OTS)',
+          customer_whatsapp: manualCustomerPhone || '080000000000',
+          payment_method: manualPaymentMethod,
+          items: itemsToSubmit,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setManualSuccessMsg('Pesanan manual berhasil dicatat dan masuk ke rekap keuangan!');
+        setTimeout(() => {
+          setManualModalOpen(false);
+          fetchOrders();
+        }, 900);
+      } else {
+        setManualError(data.message || 'Gagal menyimpan pesanan manual.');
+      }
+    } catch {
+      setManualError('Terjadi kesalahan jaringan.');
+    } finally {
+      setIsSubmittingManual(false);
+    }
+  };
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -1268,6 +1372,15 @@ export default function AdminDashboard() {
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>Refresh</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={handleOpenManualModal}
+                  className="h-9 px-3 rounded-xl bg-[#0F2547] hover:bg-[#163566] text-[#FAF8F5] border border-[#D4A843]/50 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs active:scale-95 cursor-pointer"
+                  title="Catat Pesanan Manual / Penjualan Langsung di Tempat (OTS) / Hari Lampau"
+                >
+                  <Plus className="w-3.5 h-3.5 text-[#D4A843]" />
+                  <span>+ Pesanan Manual (OTS)</span>
+                </button>
                 {hasFilter && (
                   <button
                     type="button"
@@ -1464,6 +1577,11 @@ export default function AdminDashboard() {
                                 <span className="font-mono text-[9px] text-slate-400">
                                   {order.order_code.replace(/^BGN-/, '')}
                                 </span>
+                                {(order.order_code.includes('OTS') || order.queue_number?.startsWith('OTS')) && (
+                                  <span className="text-[8px] font-black uppercase px-1 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                                    OTS
+                                  </span>
+                                )}
                               </div>
                               <div className="font-bold text-xs text-slate-900 mt-0.5 leading-snug line-clamp-2" title={order.customer_name}>
                                 {order.customer_name}
@@ -2136,6 +2254,15 @@ export default function AdminDashboard() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
+                    onClick={handleOpenManualModal}
+                    className="h-8 px-3 rounded-xl bg-[#0F2547] hover:bg-[#163566] text-[#FAF8F5] border border-[#D4A843]/50 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs active:scale-95 cursor-pointer"
+                    title="Input Pesanan Manual / Hari Lampau"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-[#D4A843]" />
+                    <span>+ Input Manual (OTS)</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={handleExportExcelFormatted}
                     className="h-8 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs active:scale-95"
                     title="Export Laporan Format Excel (.xls) dengan Tabel Rapi & Ringkasan"
@@ -2606,6 +2733,282 @@ export default function AdminDashboard() {
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Input Pesanan Manual / OTS (Hari Lampau atau Hari Ini) */}
+        {manualModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+            <div className="bg-white rounded-3xl max-w-lg w-full border border-slate-200 shadow-2xl p-4 sm:p-6 space-y-4 my-8">
+              {/* Header Modal */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-[#0F2547] text-[#D4A843] flex items-center justify-center shrink-0 shadow-xs">
+                    <Receipt className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-sm sm:text-base text-slate-900">
+                      Input Pesanan Manual (OTS)
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      Catat penjualan langsung di tempat atau transaksi hari lampau
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setManualModalOpen(false)}
+                  disabled={isSubmittingManual}
+                  className="p-1 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Form Input */}
+              <form onSubmit={handleSubmitManualOrder} className="space-y-3.5">
+                {/* Baris 1: Tanggal Transaksi & Jam */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Tanggal Transaksi:
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={manualDate}
+                      onChange={(e) => setManualDate(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0F2547] focus:ring-2 focus:ring-[#D4A843]/20"
+                    />
+                    <p className="text-[10px] text-slate-400">Bisa pilih tanggal kemarin atau hari ini</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Jam Transaksi:
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={manualTime}
+                      onChange={(e) => setManualTime(e.target.value)}
+                      placeholder="Contoh: 12:00 WIB"
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0F2547] focus:ring-2 focus:ring-[#D4A843]/20"
+                    />
+                    <div className="flex items-center gap-1 mt-1 flex-wrap">
+                      {['10:00 WIB', '11:30 WIB', '12:00 WIB', '13:30 WIB'].map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setManualTime(t)}
+                          className="text-[9px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded cursor-pointer"
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Baris 2: Lokasi Kampus & Titik Temu */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Lokasi Kampus:
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {(['Kampus B Halimun', 'Kampus C Minangkabau'] as CampusLocation[]).map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setManualCampus(c)}
+                          className={`h-9 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                            manualCampus === c
+                              ? 'bg-[#0F2547] text-white border-[#0F2547] shadow-xs'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          {CAMPUS_LABELS[c] || c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Titik Temu / Keterangan:
+                    </label>
+                    <input
+                      type="text"
+                      value={manualLocationNotes}
+                      onChange={(e) => setManualLocationNotes(e.target.value)}
+                      placeholder="Contoh: Beli langsung di gazebo"
+                      className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-[#0F2547]"
+                    />
+                  </div>
+                </div>
+
+                {/* Baris 3: Data Pembeli (Opsional) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Nama Pembeli (Opsional):
+                    </label>
+                    <input
+                      type="text"
+                      value={manualCustomerName}
+                      onChange={(e) => setManualCustomerName(e.target.value)}
+                      placeholder="Contoh: Pak Dosen / OTS"
+                      className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-[#0F2547]"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      No WhatsApp (Opsional):
+                    </label>
+                    <input
+                      type="text"
+                      value={manualCustomerPhone}
+                      onChange={(e) => setManualCustomerPhone(e.target.value)}
+                      placeholder="Boleh dikosongkan"
+                      className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-[#0F2547]"
+                    />
+                  </div>
+                </div>
+
+                {/* Baris 4: Pilihan Menu & Jumlah Porsi */}
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">Pilih Menu &amp; Jumlah Porsi:</span>
+                    <span className="text-[11px] text-amber-700 font-black">
+                      Subtotal: {formatIDR(manualTotalAmount)}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {products.map((p) => {
+                      const qty = manualItemQuantities[p.id] || 0;
+                      return (
+                        <div
+                          key={p.id}
+                          className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-2"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-900 truncate">{p.name}</p>
+                            <p className="text-[10px] text-slate-500">{formatIDR(p.price)}</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateManualItemQty(p.id, -1)}
+                              disabled={qty <= 0}
+                              className="w-7 h-7 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-30 text-slate-700 font-bold flex items-center justify-center transition-colors cursor-pointer"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="w-6 text-center font-bold text-xs text-slate-900">
+                              {qty}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateManualItemQty(p.id, 1)}
+                              className="w-7 h-7 rounded-lg bg-[#0F2547] hover:bg-[#163566] text-white font-bold flex items-center justify-center transition-colors cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Baris 5: Metode Pembayaran */}
+                <div className="space-y-1 pt-1 border-t border-slate-100">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Metode Pembayaran:
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setManualPaymentMethod('CASH')}
+                      className={`h-9 px-3 rounded-xl border flex items-center justify-center gap-1.5 text-xs font-bold transition-all cursor-pointer ${
+                        manualPaymentMethod === 'CASH'
+                          ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-1 ring-emerald-500'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Banknote className="w-4 h-4 text-emerald-600" />
+                      <span>Tunai (CASH)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setManualPaymentMethod('QRIS')}
+                      className={`h-9 px-3 rounded-xl border flex items-center justify-center gap-1.5 text-xs font-bold transition-all cursor-pointer ${
+                        manualPaymentMethod === 'QRIS'
+                          ? 'bg-blue-50 border-blue-500 text-blue-800 ring-1 ring-blue-500'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span>QRIS Statis</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Status Notice */}
+                <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/60 text-[11px] text-amber-900 space-y-0.5">
+                  <div className="font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                    <span>Status Otomatis: Selesai &amp; Lunas (COMPLETED)</span>
+                  </div>
+                  <p className="text-slate-600 leading-relaxed text-[10px]">
+                    Pesanan ini langsung tercatat lunas di Rekap Keuangan dan tidak mengganggu antrean dapur hari ini.
+                  </p>
+                </div>
+
+                {manualError && (
+                  <p className="text-xs font-bold text-rose-600 flex items-center gap-1">
+                    <span>•</span>
+                    <span>{manualError}</span>
+                  </p>
+                )}
+
+                {manualSuccessMsg && (
+                  <p className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" />
+                    <span>{manualSuccessMsg}</span>
+                  </p>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setManualModalOpen(false)}
+                    disabled={isSubmittingManual}
+                    className="h-9 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingManual || manualTotalAmount <= 0}
+                    className="h-9 px-4 rounded-xl bg-[#0F2547] hover:bg-[#163566] disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                  >
+                    {isSubmittingManual ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Menyimpan...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-[#D4A843]" />
+                        <span>Simpan Transaksi ({formatIDR(manualTotalAmount)})</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
