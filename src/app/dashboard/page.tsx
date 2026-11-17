@@ -1082,7 +1082,7 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex items-center gap-2">
-            <nav className="flex items-center bg-slate-100 p-1 rounded-xl gap-0.5">
+            <nav className="flex items-center bg-slate-100 p-1 rounded-xl gap-0.5 overflow-x-auto max-w-[calc(100vw-100px)] sm:max-w-none scrollbar-none">
               {[
                 { key: 'ORDERS', label: 'Pesanan Masuk' },
                 { key: 'RECAP', label: 'Rekap Dapur & Kurir' },
@@ -1334,15 +1334,15 @@ export default function AdminDashboard() {
                   </p>
                 </div>
               ) : (
-                <div className="w-full overflow-hidden">
-                  <table className="w-full text-left table-fixed">
+                <div className="w-full overflow-x-auto">
+                  <table className="w-full text-left min-w-[860px]">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                        <th className="w-[20%] px-3 py-3">Antrean &amp; Pemesan</th>
-                        <th className="w-[24%] px-3 py-3">Pengantaran &amp; Titik Temu</th>
-                        <th className="w-[22%] px-3 py-3">Menu Pesanan</th>
-                        <th className="w-[16%] px-3 py-3">Total &amp; Bayar</th>
-                        <th className="w-[18%] px-3 py-3">Status &amp; Aksi</th>
+                        <th className="px-3.5 py-3 min-w-[170px]">Antrean &amp; Pemesan</th>
+                        <th className="px-3.5 py-3 min-w-[210px]">Pengantaran &amp; Titik Temu</th>
+                        <th className="px-3.5 py-3 min-w-[200px]">Menu Pesanan</th>
+                        <th className="px-3.5 py-3 min-w-[130px]">Total &amp; Bayar</th>
+                        <th className="px-3.5 py-3 min-w-[150px]">Status &amp; Aksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-xs">
@@ -1381,7 +1381,7 @@ export default function AdminDashboard() {
                             className="hover:bg-slate-50/60 transition-colors align-top"
                           >
                             {/* Kolom 1: Antrean & Pemesan */}
-                            <td className="px-3 py-3">
+                            <td className="px-3.5 py-3">
                               <div className="flex items-center gap-2">
                                 <span className="text-base font-black text-[#0F2547]">
                                   {order.queue_number || '-'}
@@ -1410,41 +1410,39 @@ export default function AdminDashboard() {
                             </td>
 
                             {/* Kolom 2: Pengantaran & Titik Temu */}
-                            <td className="px-3 py-3">
+                            <td className="px-3.5 py-3">
                               <div className="flex items-center gap-1.5 text-xs font-bold text-[#0F2547]">
-                                <Calendar className="w-3.5 h-3.5 text-[#D4A843] shrink-0" />
+                                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                 <span>{displayDate}</span>
                               </div>
-                              <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                                <span
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                                    CAMPUS_COLORS[order.campus_location] ||
-                                    'bg-slate-100 text-slate-600 border-slate-200'
-                                  }`}
-                                >
-                                  <MapPin className="w-2.5 h-2.5" />
-                                  {campusShort}
+                              <div className="flex items-center gap-2 mt-1 text-xs text-slate-600 font-medium">
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                                  <span className="font-semibold text-slate-700">{campusShort}</span>
                                 </span>
                                 {displayTime && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-                                    <Clock className="w-2.5 h-2.5 text-[#0F2547]" />
-                                    <span>{displayTime}</span>
-                                  </span>
+                                  <>
+                                    <span className="text-slate-300">•</span>
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                                      <span>{displayTime}</span>
+                                    </span>
+                                  </>
                                 )}
                               </div>
-                              <div className="text-[11px] text-slate-700 font-medium mt-1 leading-snug">
+                              <div className="text-[11px] text-slate-600 font-medium mt-1 leading-snug">
                                 <span className="text-slate-400">Titik: </span>
-                                <span className="font-semibold text-slate-800">{order.location_notes || '-'}</span>
+                                <span className="text-slate-800 font-medium">{order.location_notes || '-'}</span>
                               </div>
                               {order.order_notes && (
-                                <div className="mt-1 text-[10px] text-amber-800 bg-amber-50 rounded-md px-1.5 py-0.5 border border-amber-200/60 leading-tight">
+                                <div className="mt-1 text-[10px] text-slate-600 bg-slate-50 rounded px-1.5 py-0.5 border border-slate-200 leading-tight">
                                   <strong>Catatan:</strong> {order.order_notes}
                                 </div>
                               )}
                             </td>
 
                             {/* Kolom 3: Menu Pesanan */}
-                            <td className="px-3 py-3">
+                            <td className="px-3.5 py-3">
                               <div className="space-y-1">
                                 {order.items && order.items.length > 0 ? (
                                   order.items.map((it, idx) => (
@@ -1460,46 +1458,40 @@ export default function AdminDashboard() {
                             </td>
 
                             {/* Kolom 4: Total & Bayar */}
-                            <td className="px-3 py-3">
+                            <td className="px-3.5 py-3">
                               <div className="text-xs font-black text-slate-900">
                                 {formatIDR(order.gross_amount)}
                               </div>
                               <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                                <span
-                                  className={`inline-block text-[9px] font-black uppercase px-2 py-0.5 rounded border ${
-                                    isCashOrder
-                                      ? 'bg-amber-100 text-amber-800 border-amber-300'
-                                      : 'bg-blue-100 text-blue-800 border-blue-300'
-                                  }`}
-                                >
+                                <span className="text-[10px] font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
                                   {pMethod}
                                 </span>
                                 {proofUrl ? (
                                   <button
                                     type="button"
                                     onClick={() => setViewingProofUrl(proofUrl)}
-                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-[9px] font-bold transition-colors cursor-pointer"
+                                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 hover:text-emerald-800 transition-colors cursor-pointer"
                                     title="Lihat Foto Bukti Serah Terima Makanan"
                                   >
-                                    <Camera className="w-2.5 h-2.5 text-emerald-600" />
+                                    <Camera className="w-3 h-3 text-emerald-600" />
                                     <span>Bukti Foto</span>
                                   </button>
                                 ) : (
                                   <button
                                     type="button"
                                     onClick={() => handleOpenProofModal(order)}
-                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 text-[9px] font-bold transition-colors cursor-pointer"
+                                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
                                     title="Upload Foto Bukti Serah Terima Makanan / Screenshot QRIS"
                                   >
-                                    <Upload className="w-2.5 h-2.5 text-amber-600" />
-                                    <span>+ Bukti Foto</span>
+                                    <Upload className="w-3 h-3 text-slate-400" />
+                                    <span>+ Bukti</span>
                                   </button>
                                 )}
                               </div>
                             </td>
 
                             {/* Kolom 5: Status & Aksi */}
-                            <td className="px-3 py-3">
+                            <td className="px-3.5 py-3">
                               <div className="flex items-start gap-1.5">
                                 <div className="space-y-1.5 flex-1 min-w-0">
                                   <span className={statusPill(order.order_status)}>
@@ -2093,17 +2085,17 @@ export default function AdminDashboard() {
                   <p className="text-sm text-slate-400">Tidak ada data transaksi pada kategori ini.</p>
                 </div>
               ) : (
-                <div className="w-full overflow-hidden">
-                  <table className="w-full text-left table-fixed text-xs">
+                <div className="w-full overflow-x-auto">
+                  <table className="w-full text-left min-w-[780px] text-xs">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                        <th className="w-[14%] px-3 py-3">ID &amp; Waktu</th>
-                        <th className="w-[18%] px-3 py-3">Pembeli &amp; Kampus</th>
-                        <th className="w-[20%] px-3 py-3">Menu Pesanan</th>
-                        <th className="w-[12%] px-3 py-3">Metode &amp; Bukti</th>
-                        <th className="w-[12%] px-3 py-3 text-right">Gross (Rp)</th>
-                        <th className="w-[10%] px-3 py-3 text-right">MDR (Rp)</th>
-                        <th className="w-[14%] px-3 py-3 text-right">Net / Status</th>
+                        <th className="px-3 py-3 min-w-[130px]">ID &amp; Waktu</th>
+                        <th className="px-3 py-3 min-w-[150px]">Pembeli &amp; Kampus</th>
+                        <th className="px-3 py-3 min-w-[180px]">Menu Pesanan</th>
+                        <th className="px-3 py-3 min-w-[120px]">Metode &amp; Bukti</th>
+                        <th className="px-3 py-3 text-right min-w-[100px]">Gross (Rp)</th>
+                        <th className="px-3 py-3 text-right min-w-[90px]">MDR (Rp)</th>
+                        <th className="px-3 py-3 text-right min-w-[110px]">Net / Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">

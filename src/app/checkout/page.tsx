@@ -20,6 +20,8 @@ import {
 import { useCart } from '@/context/CartContext';
 import { formatIDR } from '@/lib/formatters';
 import { CampusLocation, PaymentMethod } from '@/types';
+import CalendarDatePicker from '@/components/CalendarDatePicker';
+import CustomTimePicker from '@/components/CustomTimePicker';
 
 const CAMPUS_OPTIONS: CampusLocation[] = [
   'Kampus B Halimun',
@@ -398,61 +400,27 @@ export default function CheckoutPage() {
               </h2>
             </div>
 
-            <div className="space-y-1.5">
+            {/* Pemilihan Tanggal Pengantaran Menggunakan Kalender Visual */}
+            <div className="space-y-2">
               <label className="text-xs font-semibold text-slate-700 block">
-                Pilih Tanggal Pengantaran (Selasa, Rabu, Kamis):
+                Pilih Tanggal Pengantaran:
               </label>
-              <div className="grid grid-cols-2 gap-1.5">
-                {availableDates.map((d) => {
-                  const isSel = selectedDate.dateString === d.dateString;
-                  return (
-                    <button
-                      key={d.dateString}
-                      type="button"
-                      onClick={() => setSelectedDate(d)}
-                      className={`p-2.5 rounded-xl text-left border flex items-center justify-between text-xs transition-all ${
-                        isSel
-                          ? 'bg-[#0F2547] text-white border-[#0F2547] font-bold shadow-xs ring-2 ring-[#D4A843]/30'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 font-medium'
-                      }`}
-                    >
-                      <div className="min-w-0">
-                        <span className={`text-[10px] block ${isSel ? 'text-[#D4A843]' : 'text-slate-400'}`}>
-                          {d.dayName}
-                        </span>
-                        <span className="truncate block font-semibold">{d.displayLabel}</span>
-                      </div>
-                      {isSel && <Check className="w-3.5 h-3.5 text-[#D4A843] shrink-0 ml-1" />}
-                    </button>
-                  );
-                })}
-              </div>
+              <CalendarDatePicker
+                availableDates={availableDates}
+                selectedDate={selectedDate}
+                onSelectDate={(d) => setSelectedDate(d)}
+              />
             </div>
 
-            <div className="space-y-1.5">
+            {/* Pemilihan Jam Waktu Tiba Menggunakan Custom Time Picker Sesuai Referensi */}
+            <div className="space-y-2 pt-2 border-t border-slate-100">
               <label className="text-xs font-semibold text-slate-700 block">
                 Pilih Jam Waktu Tiba:
               </label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {timeSlots.map((slot) => {
-                  const isSel = selectedTimeSlot === slot;
-                  return (
-                    <button
-                      key={slot}
-                      type="button"
-                      onClick={() => setSelectedTimeSlot(slot)}
-                      className={`h-10 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 border transition-all ${
-                        isSel
-                          ? 'bg-[#0F2547] text-white border-[#0F2547] font-bold shadow-xs ring-2 ring-[#D4A843]/30'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      <Clock className={`w-3 h-3 ${isSel ? 'text-[#D4A843]' : 'text-slate-400'}`} />
-                      <span>{slot}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              <CustomTimePicker
+                value={selectedTimeSlot}
+                onChange={(val) => setSelectedTimeSlot(val)}
+              />
             </div>
           </div>
 

@@ -492,7 +492,7 @@ Berikut saya lampirkan tangkapan layar (screenshot) bukti pembayaran QRIS. Mohon
                                 className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold ${
                                   isCompleted
                                     ? 'bg-emerald-100 text-emerald-700'
-                                    : 'bg-[#0F2547]/10 text-[#0F2547] border border-[#D4A843]/40 animate-pulse'
+                                    : 'bg-[#0F2547]/10 text-[#0F2547] border border-[#D4A843]/40'
                                 }`}
                               >
                                 {isCompleted ? 'Selesai' : 'Berlangsung'}

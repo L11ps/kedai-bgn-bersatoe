@@ -65,7 +65,7 @@ export default function HomePage() {
         {/* Brand Banner */}
         <section className="bg-gradient-to-r from-[#0F2547] via-[#163566] to-[#0A1628] text-white px-4 py-2.5 border-b border-[#9EC6E3]/20 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#D4A843] animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-[#D4A843]" />
             <span className="text-xs font-bold text-[#FAF8F5]">
               Cita Rasa Gurih &amp; Nikmat Khas Kampus Tel-U
             </span>

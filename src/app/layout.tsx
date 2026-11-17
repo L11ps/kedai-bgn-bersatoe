@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
+import CookieConsent from '@/components/CookieConsent';
 
 export const metadata: Metadata = {
   title: 'KEDAI BGN BERSATOE - Berasa Gurih & Nikmat | Telkom University Jakarta',
@@ -26,7 +27,10 @@ export default function RootLayout({
   return (
     <html lang="id" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-[#071324] text-slate-900 font-sans">
-        <CartProvider>{children}</CartProvider>
+        <CartProvider>
+          {children}
+          <CookieConsent />
+        </CartProvider>
       </body>
     </html>
   );
