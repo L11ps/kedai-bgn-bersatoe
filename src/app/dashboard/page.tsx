@@ -1047,42 +1047,58 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-slate-50 text-slate-800 antialiased">
       {/* Top Header */}
       <header className="sticky top-0 z-20 bg-white border-b border-slate-200 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 ring-2 ring-[#D4A843] bg-[#0A1628] shadow-xs">
-              <Image
-                src="/images/bgn-logo.jpg"
-                alt="Logo Kedai BGN Bersatoe"
-                width={40}
-                height={40}
-                className="object-cover w-full h-full"
-                priority
-              />
-            </div>
-            <div className="leading-tight">
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-sm text-[#0F2547] tracking-tight">
-                  KEDAI BGN BERSATOE
-                </span>
-                <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-[#D4A843]/20 text-[#0F2547] border border-[#D4A843]/40">
-                  EST. 1998
-                </span>
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 sm:py-3">
+          {/* Mobile Header Layout (sm:hidden) */}
+          <div className="flex sm:hidden flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0 ring-2 ring-[#D4A843] bg-[#0A1628] shadow-xs">
+                  <Image
+                    src="/images/bgn-logo.jpg"
+                    alt="Logo Kedai BGN Bersatoe"
+                    width={32}
+                    height={32}
+                    className="object-cover w-full h-full"
+                    priority
+                  />
+                </div>
+                <div className="leading-tight min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="font-extrabold text-xs text-[#0F2547] tracking-tight truncate">
+                      KEDAI BGN BERSATOE
+                    </span>
+                    <span className="text-[8px] font-black uppercase px-1 py-0.2 rounded bg-[#D4A843]/20 text-[#0F2547] border border-[#D4A843]/40 shrink-0">
+                      EST. 1998
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-medium truncate">
+                    Admin &amp; Operational Logistics Panel
+                  </div>
+                </div>
               </div>
-              <div className="text-[11px] text-slate-400 font-medium">
-                Admin &amp; Operational Logistics Panel
-              </div>
-            </div>
-            <Link
-              href="/"
-              className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-[#0F2547] transition-colors ml-2"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              Lihat Toko
-            </Link>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <nav className="flex items-center bg-slate-100 p-1 rounded-xl gap-0.5 overflow-x-auto max-w-[calc(100vw-100px)] sm:max-w-none scrollbar-none">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Link
+                  href="/"
+                  className="h-7 px-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-semibold text-slate-600 flex items-center gap-1 transition-colors shadow-2xs"
+                  title="Lihat Halaman Toko"
+                >
+                  <ArrowLeft className="w-3 h-3" />
+                  <span>Toko</span>
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  title="Keluar dari sesi Admin"
+                  className="h-7 px-2 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[11px] font-bold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                >
+                  <LogOut className="w-3 h-3" />
+                  <span>Keluar</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile Tab Bar: Horizontally Scrollable Full Width */}
+            <nav className="flex items-center bg-slate-100 p-1 rounded-xl gap-1 overflow-x-auto scrollbar-none w-full">
               {[
                 { key: 'ORDERS', label: 'Pesanan Masuk' },
                 { key: 'RECAP', label: 'Rekap Dapur & Kurir' },
@@ -1092,7 +1108,7 @@ export default function AdminDashboard() {
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key as ActiveTab)}
-                  className={`h-8 px-3.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+                  className={`h-7 px-3 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all shrink-0 ${
                     activeTab === tab.key
                       ? 'bg-white text-slate-900 shadow-xs'
                       : 'text-slate-500 hover:text-slate-700'
@@ -1100,21 +1116,85 @@ export default function AdminDashboard() {
                 >
                   {tab.label}
                   {tab.key === 'ORDERS' && activeProcessingCount > 0 && (
-                    <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#0F2547] text-[#D4A843] ring-1 ring-[#D4A843] text-[10px] font-black">
+                    <span className="ml-1 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-[#0F2547] text-[#D4A843] ring-1 ring-[#D4A843] text-[9px] font-black">
                       {activeProcessingCount}
                     </span>
                   )}
                 </button>
               ))}
             </nav>
-            <button
-              onClick={handleLogout}
-              title="Keluar dari sesi Admin"
-              className="h-8 px-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Keluar</span>
-            </button>
+          </div>
+
+          {/* Desktop Header Layout (hidden sm:flex) */}
+          <div className="hidden sm:flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 ring-2 ring-[#D4A843] bg-[#0A1628] shadow-xs">
+                <Image
+                  src="/images/bgn-logo.jpg"
+                  alt="Logo Kedai BGN Bersatoe"
+                  width={40}
+                  height={40}
+                  className="object-cover w-full h-full"
+                  priority
+                />
+              </div>
+              <div className="leading-tight">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-sm text-[#0F2547] tracking-tight">
+                    KEDAI BGN BERSATOE
+                  </span>
+                  <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-[#D4A843]/20 text-[#0F2547] border border-[#D4A843]/40">
+                    EST. 1998
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-400 font-medium">
+                  Admin &amp; Operational Logistics Panel
+                </div>
+              </div>
+              <Link
+                href="/"
+                className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-[#0F2547] transition-colors ml-2"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Lihat Toko
+              </Link>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <nav className="flex items-center bg-slate-100 p-1 rounded-xl gap-0.5 overflow-x-auto scrollbar-none">
+                {[
+                  { key: 'ORDERS', label: 'Pesanan Masuk' },
+                  { key: 'RECAP', label: 'Rekap Dapur & Kurir' },
+                  { key: 'SCHEDULE', label: 'Jadwal & Operasional' },
+                  { key: 'FINANCE', label: 'Rekap Keuangan' },
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key as ActiveTab)}
+                    className={`h-8 px-3.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+                      activeTab === tab.key
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    {tab.label}
+                    {tab.key === 'ORDERS' && activeProcessingCount > 0 && (
+                      <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#0F2547] text-[#D4A843] ring-1 ring-[#D4A843] text-[10px] font-black">
+                        {activeProcessingCount}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </nav>
+              <button
+                onClick={handleLogout}
+                title="Keluar dari sesi Admin"
+                className="h-8 px-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Keluar</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -1124,12 +1204,12 @@ export default function AdminDashboard() {
         {activeTab === 'ORDERS' && (
           <div className="space-y-4">
             {/* Quick Campus Filter Pills for Logistics */}
-            <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mr-1">
-                  Logistik Kampus:
+            <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-none w-full sm:w-auto pb-1 sm:pb-0">
+                <span className="text-[11px] sm:text-xs font-extrabold text-slate-500 uppercase tracking-wider shrink-0 mr-0.5">
+                  Logistik:
                 </span>
-                <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+                <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl shrink-0">
                   <button
                     type="button"
                     onClick={() => setFilter((f) => ({ ...f, campus: 'ALL' }))}
@@ -1150,7 +1230,7 @@ export default function AdminDashboard() {
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    Kampus Halimun ({countHalimun})
+                    Halimun ({countHalimun})
                   </button>
                   <button
                     type="button"
@@ -1161,12 +1241,12 @@ export default function AdminDashboard() {
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    Kampus Minangkabau ({countMinangkabau})
+                    Minangkabau ({countMinangkabau})
                   </button>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 <CustomSelect
                   value={filter.date}
                   onChange={handleDateChange}
@@ -1183,25 +1263,10 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={fetchOrders}
-                  className="h-9 px-3 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
+                  className="h-9 px-3 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>Refresh</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsBulkDelete(true);
-                    setOrderToDelete(null);
-                    setDeletePassword('');
-                    setDeleteError('');
-                    setDeleteModalOpen(true);
-                  }}
-                  className="h-9 px-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
-                  title="Bersihkan Semua Data Pesanan Testing"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Bersihkan Data Testing</span>
                 </button>
                 {hasFilter && (
                   <button
@@ -1210,7 +1275,7 @@ export default function AdminDashboard() {
                       setFilter({ campus: 'ALL', status: 'ALL', date: 'ALL' });
                       setSelectedRecapDate('ALL');
                     }}
-                    className="h-9 px-2.5 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1 transition-colors"
+                    className="h-9 px-2.5 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
                     <span>Reset</span>
@@ -1285,16 +1350,16 @@ export default function AdminDashboard() {
                   Tidak ada pesanan aktif yang perlu dimasak untuk jadwal ini.
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
                   {Object.entries(kitchenPortionCounts).map(([name, count]) => (
                     <div
                       key={name}
-                      className="bg-gradient-to-br from-slate-50 to-amber-50/40 p-3.5 rounded-xl border border-slate-200/90 flex flex-col justify-between shadow-xs"
+                      className="bg-gradient-to-br from-slate-50 to-amber-50/40 p-3 sm:p-3.5 rounded-xl border border-slate-200/90 flex flex-col justify-between shadow-xs"
                     >
-                      <span className="text-xs font-bold text-slate-800 leading-snug line-clamp-1" title={name}>
+                      <span className="text-xs font-bold text-slate-800 leading-snug line-clamp-2 min-h-[30px]" title={name}>
                         {name}
                       </span>
-                      <div className="mt-2.5 flex items-baseline justify-between">
+                      <div className="mt-2 flex items-baseline justify-between">
                         <span className="text-2xl font-black text-[#0F2547]">{count}</span>
                         <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">
                           Porsi / Btl
@@ -1304,11 +1369,11 @@ export default function AdminDashboard() {
                   ))}
 
                   {/* Kartu Ringkasan Total Porsi Keseluruhan */}
-                  <div className="bg-[#0F2547] text-white p-3.5 rounded-xl border border-[#0F2547] flex flex-col justify-between shadow-xs">
+                  <div className="bg-[#0F2547] text-white p-3 sm:p-3.5 rounded-xl border border-[#0F2547] flex flex-col justify-between shadow-xs">
                     <span className="text-xs font-bold text-amber-300 leading-snug">
                       Total Keseluruhan
                     </span>
-                    <div className="mt-2.5 flex items-baseline justify-between">
+                    <div className="mt-2 flex items-baseline justify-between">
                       <span className="text-2xl font-black text-white">{totalKitchenPortions}</span>
                       <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
                         {kitchenTargetOrders.length} Pesanan
@@ -1319,8 +1384,16 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            {/* Orders Table (Fit Layar Penuh Tanpa Horizontal Scroll) */}
+            {/* Orders Table */}
             <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+              {/* Petunjuk Geser di Tampilan Handphone */}
+              <div className="sm:hidden flex items-center justify-between px-3.5 py-2 bg-slate-50/90 border-b border-slate-200 text-[11px] text-slate-500 font-medium">
+                <span className="flex items-center gap-1.5">
+                  <span>Geser tabel ke samping untuk melihat menu &amp; aksi</span>
+                </span>
+                <span className="font-mono text-[10px] text-slate-400 font-bold">Scroll ➔</span>
+              </div>
+
               {isLoading ? (
                 <div className="py-20 text-center flex flex-col items-center gap-2 text-sm text-slate-400">
                   <RefreshCw className="w-5 h-5 animate-spin text-slate-300" />
@@ -1334,15 +1407,17 @@ export default function AdminDashboard() {
                   </p>
                 </div>
               ) : (
-                <div className="w-full overflow-x-auto">
-                  <table className="w-full text-left min-w-[860px]">
+                <div className="w-full overflow-x-auto relative">
+                  <table className="w-full text-left min-w-[720px] border-collapse">
                     <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                        <th className="px-3.5 py-3 min-w-[170px]">Antrean &amp; Pemesan</th>
-                        <th className="px-3.5 py-3 min-w-[210px]">Pengantaran &amp; Titik Temu</th>
-                        <th className="px-3.5 py-3 min-w-[200px]">Menu Pesanan</th>
-                        <th className="px-3.5 py-3 min-w-[130px]">Total &amp; Bayar</th>
-                        <th className="px-3.5 py-3 min-w-[150px]">Status &amp; Aksi</th>
+                      <tr className="border-b border-slate-200 bg-slate-50/95 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th className="sticky left-0 z-20 bg-slate-100/95 backdrop-blur-xs px-3.5 py-3 min-w-[130px] max-w-[145px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] border-r border-slate-200">
+                          Antrean &amp; Pemesan
+                        </th>
+                        <th className="px-3.5 py-3 min-w-[170px]">Pengantaran &amp; Titik Temu</th>
+                        <th className="px-3.5 py-3 min-w-[170px]">Menu Pesanan</th>
+                        <th className="px-3.5 py-3 min-w-[110px]">Total &amp; Bayar</th>
+                        <th className="px-3.5 py-3 min-w-[140px]">Status &amp; Aksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-xs">
@@ -1378,23 +1453,23 @@ export default function AdminDashboard() {
                         return (
                           <tr
                             key={order.id}
-                            className="hover:bg-slate-50/60 transition-colors align-top"
+                            className="group hover:bg-slate-50/80 transition-colors align-top"
                           >
-                            {/* Kolom 1: Antrean & Pemesan */}
-                            <td className="px-3.5 py-3">
-                              <div className="flex items-center gap-2">
-                                <span className="text-base font-black text-[#0F2547]">
+                            {/* Kolom 1: Antrean & Pemesan (Sticky di Sisi Kiri pada Mobile) */}
+                            <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50 px-3.5 py-3 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] border-r border-slate-200">
+                              <div className="flex items-baseline gap-1.5 flex-wrap">
+                                <span className="text-sm font-black text-[#0F2547]">
                                   {order.queue_number || '-'}
                                 </span>
-                                <span className="font-mono text-[10px] text-slate-400">
-                                  {order.order_code}
+                                <span className="font-mono text-[9px] text-slate-400">
+                                  {order.order_code.replace(/^BGN-/, '')}
                                 </span>
                               </div>
-                              <div className="font-bold text-slate-900 mt-1 truncate" title={order.customer_name}>
+                              <div className="font-bold text-xs text-slate-900 mt-0.5 leading-snug line-clamp-2" title={order.customer_name}>
                                 {order.customer_name}
                               </div>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="text-[11px] text-slate-500 font-mono truncate">
+                              <div className="flex items-center gap-1 mt-1">
+                                <span className="text-[10px] text-slate-500 font-mono truncate max-w-[80px]">
                                   {order.customer_whatsapp}
                                 </span>
                                 <a
@@ -1404,7 +1479,7 @@ export default function AdminDashboard() {
                                   className="p-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-all active:scale-95 inline-flex items-center justify-center shrink-0"
                                   title="Chat WhatsApp Pelanggan"
                                 >
-                                  <MessageSquare className="w-3 h-3" />
+                                  <MessageSquare className="w-2.5 h-2.5" />
                                 </a>
                               </div>
                             </td>
@@ -2085,11 +2160,21 @@ export default function AdminDashboard() {
                   <p className="text-sm text-slate-400">Tidak ada data transaksi pada kategori ini.</p>
                 </div>
               ) : (
-                <div className="w-full overflow-x-auto">
-                  <table className="w-full text-left min-w-[780px] text-xs">
+                <div className="w-full overflow-x-auto relative">
+                  {/* Petunjuk Geser di Tampilan Handphone */}
+                  <div className="sm:hidden flex items-center justify-between px-3.5 py-2 bg-slate-50/90 border-b border-slate-200 text-[11px] text-slate-500 font-medium">
+                    <span className="flex items-center gap-1.5">
+                      <span>Geser tabel ke samping untuk melihat rincian keuangan</span>
+                    </span>
+                    <span className="font-mono text-[10px] text-slate-400 font-bold">Scroll ➔</span>
+                  </div>
+
+                  <table className="w-full text-left min-w-[740px] text-xs border-collapse">
                     <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                        <th className="px-3 py-3 min-w-[130px]">ID &amp; Waktu</th>
+                      <tr className="border-b border-slate-200 bg-slate-50/95 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th className="sticky left-0 z-20 bg-slate-100/95 backdrop-blur-xs px-3 py-3 min-w-[120px] max-w-[130px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] border-r border-slate-200">
+                          ID &amp; Waktu
+                        </th>
                         <th className="px-3 py-3 min-w-[150px]">Pembeli &amp; Kampus</th>
                         <th className="px-3 py-3 min-w-[180px]">Menu Pesanan</th>
                         <th className="px-3 py-3 min-w-[120px]">Metode &amp; Bukti</th>
@@ -2120,8 +2205,8 @@ export default function AdminDashboard() {
                             : null);
 
                         return (
-                          <tr key={o.id} className="hover:bg-slate-50/60 transition-colors">
-                            <td className="px-3 py-3 align-top">
+                          <tr key={o.id} className="group hover:bg-slate-50/60 transition-colors">
+                            <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50 px-3 py-3 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] border-r border-slate-200 align-top">
                               <div className="font-mono font-bold text-[#0F2547]">
                                 {o.order_code}
                               </div>
