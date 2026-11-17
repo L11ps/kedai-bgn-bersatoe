@@ -264,6 +264,9 @@ export default function AdminDashboard() {
   const [manualCustomerPhone, setManualCustomerPhone] = useState('');
   const [manualPaymentMethod, setManualPaymentMethod] = useState<'CASH' | 'QRIS'>('CASH');
   const [manualItemQuantities, setManualItemQuantities] = useState<Record<string, number>>({});
+  const [manualItemOptions, setManualItemOptions] = useState<Record<string, Record<string, string>>>({
+    'prod-003': { 'Level Gula': 'Dengan Gula' },
+  });
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
   const [manualError, setManualError] = useState('');
   const [manualSuccessMsg, setManualSuccessMsg] = useState('');
@@ -278,10 +281,18 @@ export default function AdminDashboard() {
     setManualCustomerPhone('');
     setManualPaymentMethod('CASH');
     const initQtys: Record<string, number> = {};
+    const defaultOpts: Record<string, Record<string, string>> = {};
     products.forEach((p) => {
       initQtys[p.id] = 0;
+      if (p.variants && p.variants.length > 0) {
+        defaultOpts[p.id] = {};
+        p.variants.forEach((v) => {
+          defaultOpts[p.id][v.group_name] = v.options[0] || '';
+        });
+      }
     });
     setManualItemQuantities(initQtys);
+    setManualItemOptions(defaultOpts);
     setManualError('');
     setManualSuccessMsg('');
     setManualModalOpen(true);
@@ -312,6 +323,7 @@ export default function AdminDashboard() {
       .map(([productId, qty]) => ({
         product_id: productId,
         quantity: qty,
+        selected_options: manualItemOptions[productId] || {},
       }));
 
     if (itemsToSubmit.length === 0) {
@@ -341,6 +353,7 @@ export default function AdminDashboard() {
         setManualSuccessMsg('Pesanan manual berhasil dicatat dan masuk ke rekap keuangan!');
         setTimeout(() => {
           setManualModalOpen(false);
+          setFilter({ campus: 'ALL', status: 'ALL', date: 'ALL' });
           fetchOrders();
         }, 900);
       } else {
@@ -781,7 +794,15 @@ export default function AdminDashboard() {
           : o.payments?.[0]?.mdr_fee_amount ?? Math.round((o.gross_amount || 0) * 0.007)
         : 0;
       const netRev = isPaid ? (o.gross_amount || 0) - mdrFee : 0;
-      const items = (o.items || []).map((it) => `${it.quantity}x ${it.product_name}`).join('; ');
+      const items = (o.items || [])
+        .map((it) => {
+          const optStr =
+            it.selected_options && Object.keys(it.selected_options).length > 0
+              ? ` (${Object.values(it.selected_options).join(', ')})`
+              : '';
+          return `${it.quantity}x ${it.product_name}${optStr}`;
+        })
+        .join('; ');
       const proof = o.delivery_proof_url || o.payments?.[0]?.deeplink_url || '-';
       return [
         o.order_code,
@@ -835,7 +856,13 @@ export default function AdminDashboard() {
           : 0;
         const netRev = isPaid ? (o.gross_amount || 0) - mdrFee : 0;
         const items = (o.items || [])
-          .map((it) => `${it.quantity}x ${it.product_name}`)
+          .map((it) => {
+            const optStr =
+              it.selected_options && Object.keys(it.selected_options).length > 0
+                ? ` (${Object.values(it.selected_options).join(', ')})`
+                : '';
+            return `${it.quantity}x ${it.product_name}${optStr}`;
+          })
           .join(', ');
         const campus = CAMPUS_LABELS[o.campus_location] || o.campus_location;
         const notes = [o.scheduled_time ? `Jadwal: ${o.scheduled_time}` : '', o.location_notes, o.order_notes].filter(Boolean).join(' | ');
@@ -1122,7 +1149,15 @@ export default function AdminDashboard() {
       text += `- Tidak ada antaran\n`;
     } else {
       halimunRecapOrders.forEach((o, i) => {
-        const items = (o.items || []).map((it) => `${it.quantity}x ${it.product_name}`).join(', ');
+        const items = (o.items || [])
+          .map((it) => {
+            const optStr =
+              it.selected_options && Object.keys(it.selected_options).length > 0
+                ? ` (${Object.values(it.selected_options).join(', ')})`
+                : '';
+            return `${it.quantity}x ${it.product_name}${optStr}`;
+          })
+          .join(', ');
         const notes = o.order_notes ? ` [Catatan: ${o.order_notes}]` : '';
         const pMethod = o.payment_method || o.payments?.[0]?.payment_method || 'CASH';
         const payStatus = pMethod === 'CASH' ? `Tagih Tunai Rp ${o.gross_amount.toLocaleString('id-ID')}` : 'QRIS Lunas';
@@ -1134,7 +1169,15 @@ export default function AdminDashboard() {
       text += `- Tidak ada antaran\n`;
     } else {
       minangkabauRecapOrders.forEach((o, i) => {
-        const items = (o.items || []).map((it) => `${it.quantity}x ${it.product_name}`).join(', ');
+        const items = (o.items || [])
+          .map((it) => {
+            const optStr =
+              it.selected_options && Object.keys(it.selected_options).length > 0
+                ? ` (${Object.values(it.selected_options).join(', ')})`
+                : '';
+            return `${it.quantity}x ${it.product_name}${optStr}`;
+          })
+          .join(', ');
         const notes = o.order_notes ? ` [Catatan: ${o.order_notes}]` : '';
         const pMethod = o.payment_method || o.payments?.[0]?.payment_method || 'CASH';
         const payStatus = pMethod === 'CASH' ? `Tagih Tunai Rp ${o.gross_amount.toLocaleString('id-ID')}` : 'QRIS Lunas';
@@ -1642,6 +1685,18 @@ export default function AdminDashboard() {
                                     <div key={it.id || it.product_id || idx} className="text-xs text-slate-800 leading-snug">
                                       <span className="font-bold text-[#0F2547]">{it.quantity}x</span>{' '}
                                       <span>{it.product_name || (it as unknown as { name?: string }).name || 'Menu'}</span>
+                                      {it.selected_options && Object.keys(it.selected_options).length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-0.5">
+                                          {Object.entries(it.selected_options).map(([k, v]) => (
+                                            <span
+                                              key={k}
+                                              className="inline-block px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200"
+                                            >
+                                              {v}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
                                     </div>
                                   ))
                                 ) : (
@@ -1869,7 +1924,13 @@ export default function AdminDashboard() {
                     halimunRecapOrders.map((o, idx) => {
                       const isCash = (o.payment_method || o.payments?.[0]?.payment_method || 'CASH') === 'CASH';
                       const itemsStr = (o.items || [])
-                        .map((it) => `${it.quantity}x ${it.product_name}`)
+                        .map((it) => {
+                          const optStr =
+                            it.selected_options && Object.keys(it.selected_options).length > 0
+                              ? ` (${Object.values(it.selected_options).join(', ')})`
+                              : '';
+                          return `${it.quantity}x ${it.product_name}${optStr}`;
+                        })
                         .join(', ');
                       return (
                         <div key={o.id} className="pt-3 first:pt-0 space-y-1.5 text-xs">
@@ -1952,7 +2013,13 @@ export default function AdminDashboard() {
                     minangkabauRecapOrders.map((o, idx) => {
                       const isCash = (o.payment_method || o.payments?.[0]?.payment_method || 'CASH') === 'CASH';
                       const itemsStr = (o.items || [])
-                        .map((it) => `${it.quantity}x ${it.product_name}`)
+                        .map((it) => {
+                          const optStr =
+                            it.selected_options && Object.keys(it.selected_options).length > 0
+                              ? ` (${Object.values(it.selected_options).join(', ')})`
+                              : '';
+                          return `${it.quantity}x ${it.product_name}${optStr}`;
+                        })
                         .join(', ');
                       return (
                         <div key={o.id} className="pt-3 first:pt-0 space-y-1.5 text-xs">
@@ -2323,7 +2390,13 @@ export default function AdminDashboard() {
                           : 0;
                         const netRev = isPaid ? (o.gross_amount || 0) - mdrFee : 0;
                         const itemsStr = (o.items || [])
-                          .map((it) => `${it.quantity}x ${it.product_name}`)
+                          .map((it) => {
+                            const optStr =
+                              it.selected_options && Object.keys(it.selected_options).length > 0
+                                ? ` (${Object.values(it.selected_options).join(', ')})`
+                                : '';
+                            return `${it.quantity}x ${it.product_name}${optStr}`;
+                          })
                           .join(', ');
                         const proof =
                           o.delivery_proof_url ||
@@ -2891,32 +2964,74 @@ export default function AdminDashboard() {
                       return (
                         <div
                           key={p.id}
-                          className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-2"
+                          className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex flex-col gap-2"
                         >
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-slate-900 truncate">{p.name}</p>
-                            <p className="text-[10px] text-slate-500">{formatIDR(p.price)}</p>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-900 truncate">{p.name}</p>
+                              <p className="text-[10px] text-slate-500">{formatIDR(p.price)}</p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateManualItemQty(p.id, -1)}
+                                disabled={qty <= 0}
+                                className="w-7 h-7 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-30 text-slate-700 font-bold flex items-center justify-center transition-colors cursor-pointer"
+                              >
+                                <Minus className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="w-6 text-center font-bold text-xs text-slate-900">
+                                {qty}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateManualItemQty(p.id, 1)}
+                                className="w-7 h-7 rounded-lg bg-[#0F2547] hover:bg-[#163566] text-white font-bold flex items-center justify-center transition-colors cursor-pointer"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateManualItemQty(p.id, -1)}
-                              disabled={qty <= 0}
-                              className="w-7 h-7 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-30 text-slate-700 font-bold flex items-center justify-center transition-colors cursor-pointer"
-                            >
-                              <Minus className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="w-6 text-center font-bold text-xs text-slate-900">
-                              {qty}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateManualItemQty(p.id, 1)}
-                              className="w-7 h-7 rounded-lg bg-[#0F2547] hover:bg-[#163566] text-white font-bold flex items-center justify-center transition-colors cursor-pointer"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+
+                          {qty > 0 && p.variants && p.variants.length > 0 && (
+                            <div className="pt-2 border-t border-slate-200/80 space-y-1.5">
+                              {p.variants.map((vGroup) => {
+                                const currentOpt =
+                                  manualItemOptions[p.id]?.[vGroup.group_name] ||
+                                  vGroup.options[0] ||
+                                  '';
+                                return (
+                                  <div key={vGroup.id} className="space-y-1">
+                                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                                      <span>{vGroup.group_name}:</span>
+                                      <span className="text-[10px] text-amber-700 font-semibold">
+                                        (Wajib)
+                                      </span>
+                                    </div>
+                                    <select
+                                      value={currentOpt}
+                                      onChange={(e) =>
+                                        setManualItemOptions((prev) => ({
+                                          ...prev,
+                                          [p.id]: {
+                                            ...(prev[p.id] || {}),
+                                            [vGroup.group_name]: e.target.value,
+                                          },
+                                        }))
+                                      }
+                                      className="w-full h-8 px-2 rounded-lg border border-slate-200 text-xs font-semibold bg-white text-slate-800 focus:outline-none focus:border-[#0F2547]"
+                                    >
+                                      {vGroup.options.map((opt) => (
+                                        <option key={opt} value={opt}>
+                                          {opt}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       );
                     })}

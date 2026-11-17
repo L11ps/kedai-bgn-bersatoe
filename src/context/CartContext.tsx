@@ -81,10 +81,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addToCart = (newItem: Omit<CartItem, 'id'>) => {
-    const lineId = newItem.product_id;
+    const optionsKey =
+      newItem.selected_options && Object.keys(newItem.selected_options).length > 0
+        ? Object.entries(newItem.selected_options)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([k, v]) => `${k}:${v}`)
+            .join('|')
+        : '';
+
+    const lineId = optionsKey ? `${newItem.product_id}_${optionsKey}` : newItem.product_id;
 
     setItems((prev) => {
-      const existingIndex = prev.findIndex((item) => item.product_id === lineId);
+      const existingIndex = prev.findIndex((item) => item.id === lineId);
       if (existingIndex > -1) {
         const updated = [...prev];
         updated[existingIndex].quantity += newItem.quantity;

@@ -159,7 +159,7 @@ export default function CheckoutPage() {
         items: items.map((it) => ({
           product_id: it.product_id,
           quantity: it.quantity,
-          selected_options: {},
+          selected_options: it.selected_options || {},
           special_notes: it.special_notes,
         })),
       };
@@ -512,11 +512,25 @@ export default function CheckoutPage() {
             <h3 className="font-bold text-xs text-slate-900">Ringkasan Pesanan</h3>
             <div className="space-y-1.5 divide-y divide-slate-200/60">
               {items.map((it) => (
-                <div key={it.id} className="pt-1.5 first:pt-0 flex items-center justify-between text-xs">
-                  <span className="text-slate-700">
-                    {it.quantity}x {it.name}
-                  </span>
-                  <span className="font-bold text-slate-900">
+                <div key={it.id} className="pt-1.5 first:pt-0 flex items-start justify-between text-xs gap-2">
+                  <div className="min-w-0">
+                    <span className="text-slate-700 font-medium">
+                      {it.quantity}x {it.name}
+                    </span>
+                    {it.selected_options && Object.keys(it.selected_options).length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {Object.entries(it.selected_options).map(([k, v]) => (
+                          <span
+                            key={k}
+                            className="inline-block px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200"
+                          >
+                            {v}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <span className="font-bold text-slate-900 shrink-0">
                     {formatIDR(it.price * it.quantity)}
                   </span>
                 </div>

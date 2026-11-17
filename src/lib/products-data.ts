@@ -35,6 +35,13 @@ export const INITIAL_PRODUCTS: Product[] = [
     image_url: '/images/jus_jeruk_segar.jpg',
     is_available: true,
     po_available: true,
-    variants: [],
+    variants: [
+      {
+        id: 'var-gula-001',
+        group_name: 'Level Gula',
+        is_required: true,
+        options: ['Dengan Gula', 'Sedikit Gula', 'Tanpa Gula'],
+      },
+    ],
   },
 ];

@@ -142,6 +142,7 @@ export function getProducts(): Product[] {
         existing.price = initP.price;
         existing.image_url = initP.image_url;
         existing.category = initP.category;
+        existing.variants = initP.variants;
       } else {
         global.__BGN_PRODUCTS__.push(JSON.parse(JSON.stringify(initP)));
       }

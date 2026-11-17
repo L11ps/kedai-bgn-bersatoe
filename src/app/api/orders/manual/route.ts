@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import crypto from 'crypto';
 import { ADMIN_COOKIE_NAME, isValidSession } from '@/lib/auth';
 import { getProducts, upsertOrderInMemory } from '@/lib/order-store';
 import { isSupabaseConfigured, supabaseAdmin } from '@/lib/supabase';
@@ -11,6 +12,8 @@ export const dynamic = 'force-dynamic';
 interface ManualOrderItemInput {
   product_id: string;
   quantity: number;
+  selected_options?: Record<string, string>;
+  special_notes?: string;
 }
 
 interface ManualOrderRequest {
@@ -68,6 +71,8 @@ export async function POST(req: Request) {
     let totalGrossAmount = 0;
     const validatedItems: OrderItem[] = [];
 
+    const orderId = crypto.randomUUID();
+
     for (const itemInput of body.items) {
       if (!itemInput.quantity || itemInput.quantity <= 0) continue;
       const product = allProducts.find((p) => p.id === itemInput.product_id);
@@ -83,14 +88,14 @@ export async function POST(req: Request) {
       totalGrossAmount += subtotal;
 
       validatedItems.push({
-        id: 'oi-ots-' + Math.random().toString(36).substring(2, 9),
-        order_id: '',
+        id: crypto.randomUUID(),
+        order_id: orderId,
         product_id: product.id,
         product_name: product.name,
         unit_price: product.price,
         quantity: qty,
-        selected_options: {},
-        special_notes: 'Penjualan Langsung OTS / Manual',
+        selected_options: itemInput.selected_options || {},
+        special_notes: itemInput.special_notes || 'Penjualan Langsung OTS / Manual',
         subtotal,
       });
     }
@@ -135,14 +140,8 @@ export async function POST(req: Request) {
       }
     }
 
-    const orderId = 'ord-ots-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
     const assignedOrderCode = `BGN-OTS-${dateCodePart}-${String(otsSeq).padStart(3, '0')}`;
     const assignedQueueNumber = `OTS-${String(otsSeq).padStart(2, '0')}`;
-
-    // Berikan order_id ke tiap item
-    validatedItems.forEach((it) => {
-      it.order_id = orderId;
-    });
 
     const paymentMethod = body.payment_method === 'QRIS' ? 'QRIS' : 'CASH';
     const createdAtIso = dateObj.toISOString();
@@ -167,8 +166,9 @@ export async function POST(req: Request) {
       updated_at: new Date().toISOString(),
     };
 
+    const paymentId = crypto.randomUUID();
     const newPayment: Payment = {
-      id: 'pay-ots-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+      id: paymentId,
       order_id: orderId,
       gateway_reference_id: `MANUAL-${Date.now()}`,
       payment_method: paymentMethod,
@@ -180,6 +180,8 @@ export async function POST(req: Request) {
       paid_at: createdAtIso,
       created_at: createdAtIso,
     };
+
+    newOrder.payments = [newPayment];
 
     // 6. Simpan ke Supabase jika tersedia
     if (isSupabaseConfigured && supabaseAdmin) {
@@ -201,22 +203,30 @@ export async function POST(req: Request) {
 
         if (insOrderErr) {
           console.error('[Supabase Insert Manual Order Error]:', insOrderErr);
+          return NextResponse.json(
+            { success: false, message: `Gagal menyimpan ke database Supabase: ${insOrderErr.message}` },
+            { status: 500 }
+          );
         }
 
         const itemsToInsert = validatedItems.map((it) => ({
+          id: crypto.randomUUID(),
           order_id: newOrder.id,
           product_id: null,
           product_name: it.product_name,
           unit_price: it.unit_price,
           quantity: it.quantity,
-          selected_options: {},
+          selected_options: it.selected_options || {},
           special_notes: it.special_notes || 'OTS',
           subtotal: it.subtotal,
         }));
 
-        await supabaseAdmin.from('order_items').insert(itemsToInsert);
+        const { error: insItemsErr } = await supabaseAdmin.from('order_items').insert(itemsToInsert);
+        if (insItemsErr) {
+          console.error('[Supabase Insert Items Error]:', insItemsErr);
+        }
 
-        await supabaseAdmin.from('payments').insert({
+        const { error: insPayErr } = await supabaseAdmin.from('payments').insert({
           id: newPayment.id,
           order_id: newOrder.id,
           gateway_reference_id: newPayment.gateway_reference_id,
@@ -228,8 +238,15 @@ export async function POST(req: Request) {
           net_revenue: newPayment.net_revenue,
           paid_at: newPayment.paid_at,
         });
+        if (insPayErr) {
+          console.error('[Supabase Insert Payment Error]:', insPayErr);
+        }
       } catch (dbErr) {
-        console.warn('[Supabase Insert Exception]:', dbErr);
+        console.error('[Supabase Insert Exception]:', dbErr);
+        return NextResponse.json(
+          { success: false, message: 'Terjadi kegagalan komunikasi dengan database Supabase.' },
+          { status: 500 }
+        );
       }
     }
 
@@ -239,7 +256,13 @@ export async function POST(req: Request) {
     // 8. Sinkronisasi ke Google Sheets secara background jika tersedia
     try {
       const itemsSummary = validatedItems
-        .map((it) => `${it.quantity}x ${it.product_name}`)
+        .map((it) => {
+          const optStr =
+            it.selected_options && Object.keys(it.selected_options).length > 0
+              ? ` (${Object.values(it.selected_options).join(', ')})`
+              : '';
+          return `${it.quantity}x ${it.product_name}${optStr}`;
+        })
         .join('; ');
 
       const sheetRowData = {

@@ -86,6 +86,18 @@ export default function CartDrawer() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <h4 className="font-bold text-xs text-slate-900 truncate">{item.name}</h4>
+                    {item.selected_options && Object.keys(item.selected_options).length > 0 && (
+                      <div className="flex flex-wrap gap-1 my-1">
+                        {Object.entries(item.selected_options).map(([k, v]) => (
+                          <span
+                            key={k}
+                            className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200"
+                          >
+                            {v}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <span className="text-xs font-semibold text-[#0F2547]">
                       {formatIDR(item.price)}
                     </span>

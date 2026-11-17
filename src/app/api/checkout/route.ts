@@ -153,7 +153,7 @@ export async function POST(req: Request) {
         price: prod.price,
         image_url: prod.image_url,
         quantity: itemQty,
-        selected_options: {},
+        selected_options: item.selected_options || {},
         special_notes: (item.special_notes || '').slice(0, 100),
       });
     }
@@ -280,7 +280,13 @@ export async function POST(req: Request) {
 
     // 11. Auto-sync to Google Sheets and notify WhatsApp group
     const itemsSummary = validatedCartItems
-      .map((it) => `${it.quantity}x ${it.name}`)
+      .map((it) => {
+        const optStr =
+          it.selected_options && Object.keys(it.selected_options).length > 0
+            ? ` (${Object.values(it.selected_options).join(', ')})`
+            : '';
+        return `${it.quantity}x ${it.name}${optStr}`;
+      })
       .join('; ');
 
     const sheetRowData = {
