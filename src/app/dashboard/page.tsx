@@ -1379,7 +1379,7 @@ export default function AdminDashboard() {
                   title="Catat Pesanan Manual / Penjualan Langsung di Tempat (OTS) / Hari Lampau"
                 >
                   <Plus className="w-3.5 h-3.5 text-[#D4A843]" />
-                  <span>+ Pesanan Manual (OTS)</span>
+                  <span>Pesanan Manual (OTS)</span>
                 </button>
                 {hasFilter && (
                   <button
@@ -2259,7 +2259,7 @@ export default function AdminDashboard() {
                     title="Input Pesanan Manual / Hari Lampau"
                   >
                     <Plus className="w-3.5 h-3.5 text-[#D4A843]" />
-                    <span>+ Input Manual (OTS)</span>
+                    <span>Input Manual (OTS)</span>
                   </button>
                   <button
                     type="button"
