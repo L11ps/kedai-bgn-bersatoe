@@ -1,7 +1,7 @@
 export const ADMIN_COOKIE_NAME = 'bgn_admin_session';
 
 export function getAdminPassword(): string {
-  return process.env.ADMIN_PASSWORD || 'bgnsukses777';
+  return process.env.ADMIN_PASSWORD || 'bgnsukses123';
 }
 
 export async function generateSessionToken(password: string): Promise<string> {

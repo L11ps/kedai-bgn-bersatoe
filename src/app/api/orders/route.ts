@@ -10,6 +10,7 @@ import { isSupabaseConfigured, supabaseAdmin } from '@/lib/supabase';
 import { updateGoogleSheetOrderStatus } from '@/lib/google-sheets';
 import { sendOrderReadyNotification } from '@/lib/whatsapp';
 import { OrderStatus } from '@/types';
+import { getAdminPassword } from '@/lib/auth';
 
 export async function GET(req: Request) {
   try {
@@ -279,7 +280,7 @@ export async function DELETE(req: Request) {
     const body = await req.json().catch(() => ({}));
     const password = body.password || req.headers.get('x-admin-password');
 
-    if (password !== 'bgnsukses777') {
+    if (password !== getAdminPassword()) {
       return NextResponse.json(
         { success: false, message: 'Password admin tidak valid untuk menghapus pesanan.' },
         { status: 403 }

@@ -885,8 +885,8 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteOrder = async () => {
-    if (deletePassword !== 'bgnsukses777') {
-      setDeleteError('Password admin salah! Masukkan: bgnsukses777');
+    if (deletePassword !== 'bgnsukses123') {
+      setDeleteError('Password admin salah!');
       return;
     }
 
@@ -2279,13 +2279,12 @@ export default function AdminDashboard() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
-                  <span>Password Admin</span>
-                  <span className="text-[10px] text-slate-400">Ketik: bgnsukses777</span>
+                <label className="text-xs font-bold text-slate-700 block">
+                  Password Admin
                 </label>
                 <input
                   type="password"
-                  placeholder="Masukkan password admin (bgnsukses777)"
+                  placeholder="Masukkan password admin"
                   value={deletePassword}
                   onChange={(e) => {
                     setDeletePassword(e.target.value);

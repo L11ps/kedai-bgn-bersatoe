@@ -6,6 +6,7 @@ import {
   deleteOrderInMemory,
 } from '@/lib/order-store';
 import { isSupabaseConfigured, supabaseAdmin } from '@/lib/supabase';
+import { getAdminPassword } from '@/lib/auth';
 
 export async function GET(
   req: Request,
@@ -111,8 +112,8 @@ export async function DELETE(
     const body = await req.json().catch(() => ({}));
     const password = body.password || req.headers.get('x-admin-password');
 
-    // Strict validation for admin password "bgnsukses777"
-    if (password !== 'bgnsukses777') {
+    // Strict validation for admin password
+    if (password !== getAdminPassword()) {
       return NextResponse.json(
         { success: false, message: 'Password admin tidak valid untuk menghapus pesanan.' },
         { status: 403 }

@@ -116,9 +116,6 @@ function LoginForm() {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <div className="mt-2 text-[11px] text-slate-400">
-              Default password lokal: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-600 font-mono">bgnsukses777</code>
-            </div>
           </div>
 
           <button
