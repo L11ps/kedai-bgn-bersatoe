@@ -346,7 +346,7 @@ export default function OrderTrackingPage({
                     <li>Pilih menu <strong>Scan / QRIS</strong>, lalu scan barcode di atas atau ambil dari galeri.</li>
                     <li>Selesaikan pembayaran sebesar <strong>{formatIDR(order.gross_amount)}</strong>.</li>
                     <li>Simpan tangkapan layar (screenshot) bukti pembayaran berhasil.</li>
-                    <li>Klik tombol hijau di bawah untuk mengirim bukti screenshot ke WhatsApp Admin.</li>
+                    <li>Klik tombol hijau di bawah untuk mengirim bukti screenshot ke WhatsApp Admin (+62 857-1616-0860).</li>
                   </ol>
                 </div>
 
@@ -374,7 +374,7 @@ Berikut saya lampirkan tangkapan layar (screenshot) bukti pembayaran QRIS. Mohon
 
                   return (
                     <a
-                      href={`https://wa.me/6281935281705?text=${encodeURIComponent(waQrisText)}`}
+                      href={`https://wa.me/6285716160860?text=${encodeURIComponent(waQrisText)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full min-h-[50px] px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white flex items-center justify-center gap-2 font-black text-xs sm:text-sm shadow-lg shadow-emerald-600/30 transition-all text-center"

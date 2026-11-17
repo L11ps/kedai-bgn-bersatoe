@@ -183,7 +183,7 @@ export default function HomePage() {
         {/* Floating WhatsApp Help Pill */}
         <aside className="fixed bottom-24 right-4 z-30">
           <a
-            href="https://wa.me/6281935281705?text=Halo%20Admin%20Kedai%20BGN%20Bersatoe!%20Saya%20ingin%20bertanya%20seputar%20menu%20dan%20pemesanan."
+            href="https://wa.me/6285716160860?text=Halo%20Admin%20Kedai%20BGN%20Bersatoe!%20Saya%20ingin%20bertanya%20seputar%20menu%20dan%20pemesanan."
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2.5 rounded-full shadow-lg shadow-emerald-600/30 font-bold text-xs border border-emerald-400/50 transition-all hover:scale-105 active:scale-95"
