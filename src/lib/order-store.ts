@@ -166,6 +166,28 @@ export function getPaymentByOrderId(orderId: string): Payment | undefined {
   return (global.__BGN_PAYMENTS__ || []).find((p) => p.order_id === orderId);
 }
 
+function getHighestInMemorySequence(): number {
+  let maxSeq = 0;
+  const orders = global.__BGN_ORDERS__ || [];
+  for (const ord of orders) {
+    if (ord.queue_number) {
+      const mq = ord.queue_number.match(/A-(\d+)/i);
+      if (mq) {
+        const qnum = parseInt(mq[1], 10);
+        if (qnum > maxSeq) maxSeq = qnum;
+      }
+    }
+    if (ord.order_code) {
+      const mc = ord.order_code.match(/(\d+)$/);
+      if (mc) {
+        const cnum = parseInt(mc[1], 10);
+        if (cnum > maxSeq) maxSeq = cnum;
+      }
+    }
+  }
+  return maxSeq;
+}
+
 // Generate BGN-YYYYMMDD-XXXX
 export function generateOrderCode(): string {
   const now = new Date();
@@ -174,7 +196,9 @@ export function generateOrderCode(): string {
   const day = String(now.getDate()).padStart(2, '0');
   const dateStr = `${year}${month}${day}`;
 
-  const seq = global.__BGN_ORDER_COUNTER__ || 1;
+  const maxExisting = getHighestInMemorySequence();
+  const currentCounter = global.__BGN_ORDER_COUNTER__ || 1;
+  const seq = Math.max(currentCounter, maxExisting + 1);
   global.__BGN_ORDER_COUNTER__ = seq + 1;
 
   const numStr = String(seq % 10000).padStart(4, '0');
@@ -183,7 +207,9 @@ export function generateOrderCode(): string {
 
 // Generate A-XXX
 export function generateKitchenQueueNumber(): string {
-  const seq = global.__BGN_QUEUE_COUNTER__ || 1;
+  const maxExisting = getHighestInMemorySequence();
+  const currentCounter = global.__BGN_QUEUE_COUNTER__ || 1;
+  const seq = Math.max(currentCounter, maxExisting + 1);
   global.__BGN_QUEUE_COUNTER__ = seq + 1;
 
   const numStr = String(seq % 1000).padStart(3, '0');

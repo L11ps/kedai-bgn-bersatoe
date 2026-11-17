@@ -5,22 +5,32 @@ import { isSupabaseConfigured, supabaseAdmin } from '@/lib/supabase';
 import { appendToGoogleSheet, formatIDR, formatWIB, formatTo62Phone } from '@/lib/google-sheets';
 import { sendOrderPaidNotification, sendOperationalGroupSummary } from '@/lib/whatsapp';
 
-async function getNextOrderSequence(dateStr: string): Promise<number> {
+async function getNextOrderSequence(): Promise<number> {
   let maxSeq = 0;
 
   if (isSupabaseConfigured && supabaseAdmin) {
     try {
-      const { data: todayOrders } = await supabaseAdmin
+      const { data: allOrders } = await supabaseAdmin
         .from('orders')
-        .select('order_code')
-        .ilike('order_code', `BGN-${dateStr}-%`);
+        .select('order_code, queue_number')
+        .order('created_at', { ascending: false })
+        .limit(200);
 
-      if (todayOrders && todayOrders.length > 0) {
-        for (const ord of todayOrders) {
-          const m = ord.order_code?.match(/(\d+)$/);
-          if (m) {
-            const num = parseInt(m[1], 10);
-            if (num > maxSeq) maxSeq = num;
+      if (allOrders && allOrders.length > 0) {
+        for (const ord of allOrders) {
+          if (ord.queue_number) {
+            const mq = ord.queue_number.match(/A-(\d+)/i);
+            if (mq) {
+              const qnum = parseInt(mq[1], 10);
+              if (qnum > maxSeq) maxSeq = qnum;
+            }
+          }
+          if (ord.order_code) {
+            const mc = ord.order_code.match(/(\d+)$/);
+            if (mc) {
+              const cnum = parseInt(mc[1], 10);
+              if (cnum > maxSeq) maxSeq = cnum;
+            }
           }
         }
       }
@@ -32,11 +42,18 @@ async function getNextOrderSequence(dateStr: string): Promise<number> {
   // Also verify against in-memory orders
   const memOrders = getAllOrders();
   for (const ord of memOrders) {
-    if (ord.order_code?.startsWith(`BGN-${dateStr}-`)) {
-      const m = ord.order_code.match(/(\d+)$/);
-      if (m) {
-        const num = parseInt(m[1], 10);
-        if (num > maxSeq) maxSeq = num;
+    if (ord.queue_number) {
+      const mq = ord.queue_number.match(/A-(\d+)/i);
+      if (mq) {
+        const qnum = parseInt(mq[1], 10);
+        if (qnum > maxSeq) maxSeq = qnum;
+      }
+    }
+    if (ord.order_code) {
+      const mc = ord.order_code.match(/(\d+)$/);
+      if (mc) {
+        const cnum = parseInt(mc[1], 10);
+        if (cnum > maxSeq) maxSeq = cnum;
       }
     }
   }
@@ -153,7 +170,7 @@ export async function POST(req: Request) {
     const day = String(jakartaTime.getDate()).padStart(2, '0');
     const dateStr = `${year}${month}${day}`;
 
-    const seqNum = await getNextOrderSequence(dateStr);
+    const seqNum = await getNextOrderSequence();
     const assignedOrderCode = `BGN-${dateStr}-${String(seqNum % 10000).padStart(4, '0')}`;
     const assignedQueueNumber = `A-${String(seqNum % 1000).padStart(3, '0')}`;
 
