@@ -247,33 +247,8 @@ export default function ProductCard({ product }: ProductCardProps) {
                       </span>
                     </div>
 
-                    {/* Dropdown Selector */}
-                    <div className="relative">
-                      <select
-                        value={currentValue}
-                        onChange={(e) =>
-                          setSelectedOptions((prev) => ({
-                            ...prev,
-                            [vGroup.group_name]: e.target.value,
-                          }))
-                        }
-                        className="w-full h-11 px-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:outline-none focus:border-[#0F2547] focus:ring-2 focus:ring-[#D4A843]/20 shadow-xs appearance-none"
-                      >
-                        {vGroup.options.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
-                        <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                          <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                        </svg>
-                      </div>
-                    </div>
-
                     {/* Pill Option Buttons */}
-                    <div className="grid grid-cols-3 gap-1.5 pt-1">
+                    <div className="grid grid-cols-3 gap-2 pt-0.5">
                       {vGroup.options.map((opt) => {
                         const isSelected = currentValue === opt;
                         return (
@@ -286,10 +261,10 @@ export default function ProductCard({ product }: ProductCardProps) {
                                 [vGroup.group_name]: opt,
                               }))
                             }
-                            className={`py-2 px-1 text-center rounded-xl text-[11px] font-bold border transition-all ${
+                            className={`py-2.5 px-1.5 text-center rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                               isSelected
-                                ? 'bg-[#0F2547] text-[#FAF8F5] border-[#0F2547] shadow-xs ring-2 ring-[#D4A843]/30'
-                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                ? 'bg-[#0F2547] text-[#FAF8F5] border-[#0F2547] shadow-sm ring-2 ring-[#D4A843]/40'
+                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
                             }`}
                           >
                             {opt}
