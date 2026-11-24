@@ -247,7 +247,7 @@ $$ LANGUAGE plpgsql;
 INSERT INTO products (name, slug, category, price, description, image_url, is_available) VALUES
 ('Nasi Goreng Spesial Telur', 'nasi-goreng-spesial-telur', 'Makanan Utama & Camilan', 15000, 'Nasi goreng gurih beraroma wok hei dengan bumbu kecap spesial, sayuran campur, telur ceplok mata sapi, acar timun segar, dan kerupuk renyah.', '/images/nasi_goreng_spesial_telur.jpg', true),
 ('Spaghetti Bolognese Keju', 'spaghetti-bolognese-keju', 'Makanan Utama & Camilan', 15000, 'Pasta spaghetti La Fonte kenyal al dente berpadu saus daging bolognese gurih kental, cincangan bombai harum, dan limpahan keju cheddar parut.', '/images/spaghetti_bolognese_keju.jpg', true),
-('Jus Jeruk Segar', 'jus-jeruk-segar', 'Dessert & Minuman', 10000, '100% perasan jeruk segar alami pilihan kaya vitamin C tanpa pemanis buatan, disajikan dingin menyegarkan siap minum.', '/images/jus_jeruk_segar.jpg', true)
+('Jus Jeruk Segar', 'jus-jeruk-segar', 'Dessert & Minuman', 10000, '100% perasan jeruk segar alami pilihan kaya vitamin C tanpa pemanis buatan, disajikan dingin menyegarkan dalam botol 250ml.', '/images/jus_jeruk_segar.jpg', true)
 ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, image_url = EXCLUDED.image_url;
 
 /* SEED VARIANTS */

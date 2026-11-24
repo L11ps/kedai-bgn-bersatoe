@@ -31,7 +31,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     slug: 'jus-jeruk-segar',
     category: 'Dessert & Minuman',
     price: 10000,
-    description: '100% perasan jeruk segar alami murni kaya vitamin C tanpa pemanis buatan, disajikan dingin menyegarkan siap minum.',
+    description: '100% perasan jeruk segar alami murni kaya vitamin C tanpa pemanis buatan, disajikan dingin menyegarkan dalam botol 250ml siap minum.',
     image_url: '/images/jus_jeruk_segar.jpg',
     is_available: true,
     po_available: true,
