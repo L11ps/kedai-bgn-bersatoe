@@ -20,7 +20,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     category: 'Makanan Utama & Camilan',
     price: 15000,
     description: 'Pasta spaghetti La Fonte kenyal al dente berpadu saus bolognese gurih kental (saus terpisah di plastik klip higienis), cincangan bombai harum, dan limpahan keju cheddar parut Wincheez.',
-    image_url: '/images/spaghetti_bolognese_keju.jpg',
+    image_url: '/images/spaghetti_bolognese.jpg',
     is_available: true,
     po_available: true,
     variants: [],
